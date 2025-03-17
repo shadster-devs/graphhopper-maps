@@ -58,9 +58,9 @@ export default function Search({ points, map }: { points: QueryPoint[]; map: Map
                     <AddIcon />
                     <div>{tr('add_to_route')}</div>
                 </PlainButton>
-                <PlainButton className={styles.settingsButton} onClick={() => setShowSettings(!showSettings)}>
+                {/* <PlainButton className={styles.settingsButton} onClick={() => setShowSettings(!showSettings)}>
                     {showSettings ? tr('settings_close') : tr('settings')}
-                </PlainButton>
+                </PlainButton> */}
             </div>
             {showSettings && <SettingsBox />}
         </div>

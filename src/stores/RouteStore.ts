@@ -2,50 +2,24 @@ import Store from '@/stores/Store'
 import { Action } from '@/stores/Dispatcher'
 import { ClearPoints, ClearRoute, RemovePoint, RouteRequestSuccess, SetPoint, SetSelectedPath } from '@/actions/Actions'
 import { Path, RoutingResult } from '@/api/graphhopper'
+import { SegmentedPath, SegmentedRoutingResult } from '@/api/sarathi'
+import { convertPathToSegmented, convertToSegmentedPaths } from '@/api/DataConverter'
 
 export interface RouteStoreState {
-    routingResult: RoutingResult
-    selectedPath: Path
+    routingResult: SegmentedRoutingResult
+    selectedPath: SegmentedPath
 }
 
 export default class RouteStore extends Store<RouteStoreState> {
-    private static getEmptyPath(): Path {
+    private static getEmptyPath(): SegmentedPath {
         return {
             bbox: undefined,
-            instructions: [],
-            points: {
-                coordinates: [],
-                type: 'LineString',
-            },
+            distance: 0,
+            time: 0,
             points_encoded: false,
             points_encoded_multiplier: 1e5,
-            snapped_waypoints: {
-                type: 'LineString',
-                coordinates: [],
-            },
-            ascend: 0,
-            descend: 0,
-            details: {
-                max_speed: [],
-                street_name: [],
-                toll: [],
-                road_environment: [],
-                road_class: [],
-                road_access: [],
-                access_conditional: [],
-                foot_conditional: [],
-                bike_conditional: [],
-                track_type: [],
-                country: [],
-                get_off_bike: [],
-                mtb_rating: [],
-                hike_rating: [],
-            },
-            distance: 0,
-            points_order: [],
-            time: 0,
-            description: '',
-        }
+            segments: []
+        };
     }
 
     constructor() {
@@ -56,9 +30,14 @@ export default class RouteStore extends Store<RouteStoreState> {
         if (action instanceof RouteRequestSuccess) {
             return this.reduceRouteReceived(state, action)
         } else if (action instanceof SetSelectedPath) {
+            // Convert the selected path to segmented format if it's not already
+            const segmentedPath = 'segments' in action.path 
+                ? action.path as SegmentedPath
+                : convertPathToSegmented(action.path as Path);
+                
             return {
                 ...state,
-                selectedPath: action.path,
+                selectedPath: segmentedPath,
             }
         } else if (
             action instanceof SetPoint ||
@@ -75,27 +54,26 @@ export default class RouteStore extends Store<RouteStoreState> {
         return {
             routingResult: {
                 paths: [],
-                info: {
-                    copyright: [],
-                    road_data_timestamp: '',
-                    took: 0,
-                },
             },
             selectedPath: RouteStore.getEmptyPath(),
         }
     }
 
     private reduceRouteReceived(state: RouteStoreState, action: RouteRequestSuccess) {
-        if (RouteStore.containsPaths(action.result.paths)) {
+        if (action.result.paths && action.result.paths.length > 0) {
+            console.log("Unsegmented Routing Result JSON:", JSON.stringify(action.result));
+            // Convert all paths to segmented format
+            const segmentedResult = convertToSegmentedPaths(action.result);
+            console.log("Segmented Routing Result JSON:", JSON.stringify(segmentedResult));
             return {
-                routingResult: action.result,
-                selectedPath: action.result.paths[0],
+                routingResult: segmentedResult,
+                selectedPath: segmentedResult.paths[0],
             }
         }
         return RouteStore.getInitialState()
     }
 
-    private static containsPaths(paths: Path[]) {
+    private static containsPaths(paths: any[]) {
         return paths.length > 0
     }
 }

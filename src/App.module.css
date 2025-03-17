@@ -40,6 +40,8 @@
 }
 
 .sidebarContent {
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
     position: relative;
     display: flex;
     flex-direction: column;

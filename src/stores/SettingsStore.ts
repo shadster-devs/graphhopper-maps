@@ -2,12 +2,21 @@ import Store from '@/stores/Store'
 import { Action } from '@/stores/Dispatcher'
 import { SetCustomModelEnabled, UpdateSettings } from '@/actions/Actions'
 
+// Define path display modes enum
+export enum PathDisplayMode {
+    Dynamic = 'dynamic',
+    Static = 'static'
+}
+
 export interface Settings {
     showDistanceInMiles: boolean
     drawAreasEnabled: boolean
     gpxExportRte: boolean
     gpxExportWpt: boolean
     gpxExportTrk: boolean
+    showAnimations: boolean
+    isScreenshot: boolean
+    pathDisplayMode: PathDisplayMode
 }
 
 export const defaultSettings: Settings = {
@@ -16,6 +25,9 @@ export const defaultSettings: Settings = {
     gpxExportRte: false,
     gpxExportWpt: false,
     gpxExportTrk: true,
+    showAnimations: true,
+    isScreenshot: false,
+    pathDisplayMode: PathDisplayMode.Dynamic
 }
 
 export default class SettingsStore extends Store<Settings> {

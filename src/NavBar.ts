@@ -1,13 +1,14 @@
 import { coordinateToText } from '@/Converters'
 import Dispatcher from '@/stores/Dispatcher'
-import { ClearPoints, SelectMapLayer, SetBBox, SetQueryPoints, SetVehicleProfile } from '@/actions/Actions'
+import { ClearPoints, SelectMapLayer, SetBBox, SetQueryPoints, SetVehicleProfile, UpdateSettings } from '@/actions/Actions'
 // import the window like this so that it can be mocked during testing
 import { window } from '@/Window'
 import QueryStore, { getBBoxFromCoord, QueryPoint, QueryPointType, QueryStoreState } from '@/stores/QueryStore'
 import MapOptionsStore, { MapOptionsStoreState } from './stores/MapOptionsStore'
 import { ApiImpl, getApi } from '@/api/Api'
 import { AddressParseResult } from '@/pois/AddressParseResult'
-import { getQueryStore } from '@/stores/Stores'
+import { getQueryStore, getSettingsStore } from '@/stores/Stores'
+import { PathDisplayMode } from '@/stores/SettingsStore'
 
 export default class NavBar {
     private readonly queryStore: QueryStore
@@ -25,6 +26,7 @@ export default class NavBar {
         window.history.replaceState(null, '', this.createUrlFromState())
         this.queryStore.register(() => this.updateUrlFromState())
         this.mapStore.register(() => this.updateUrlFromState())
+        getSettingsStore().register(() => this.updateUrlFromState())
     }
 
     private static createUrl(baseUrl: string, queryStoreState: QueryStoreState, mapState: MapOptionsStoreState) {
@@ -39,6 +41,12 @@ export default class NavBar {
         result.searchParams.append('layer', mapState.selectedStyle.name)
         if (queryStoreState.customModelEnabled)
             result.searchParams.append('custom_model', queryStoreState.customModelStr.replace(/\s+/g, ''))
+        
+        // Add path display mode to the URL if it's not the default
+        const settings = getSettingsStore().state;
+        if (settings.pathDisplayMode !== PathDisplayMode.Dynamic) {
+            result.searchParams.append('pathDisplayMode', settings.pathDisplayMode);
+        }
 
         return result
     }
@@ -94,6 +102,14 @@ export default class NavBar {
         return url.searchParams.get('layer')
     }
 
+    private static parsePathDisplayMode(url: URL): PathDisplayMode | null {
+        const mode = url.searchParams.get('pathDisplayMode')
+        if (mode === 'status') {
+            return PathDisplayMode.Static
+        }
+        return null
+    }
+
     async updateStateFromUrl() {
         // We update the state several times ourselves, but we don't want to push history entries for each dispatch.
         this.ignoreStateUpdates = true
@@ -105,6 +121,13 @@ export default class NavBar {
         if (parsedProfileName)
             // this won't trigger a route request because we just cleared the points
             Dispatcher.dispatch(new SetVehicleProfile({ name: parsedProfileName }))
+        
+        // Parse and set the path display mode if specified
+        const pathDisplayMode = NavBar.parsePathDisplayMode(url)
+        if (pathDisplayMode) {
+            Dispatcher.dispatch(new UpdateSettings({ pathDisplayMode }))
+        }
+        
         const parsedPoints = NavBar.parsePoints(url)
 
         // support legacy URLs without coordinates (not initialized) and only text, see #199

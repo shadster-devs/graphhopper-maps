@@ -1,6 +1,7 @@
 import { Action } from '@/stores/Dispatcher'
 import { Coordinate, QueryPoint } from '@/stores/QueryStore'
 import { ApiInfo, Bbox, Path, RoutingArgs, RoutingProfile, RoutingResult } from '@/api/graphhopper'
+import { SegmentedPath } from '@/api/sarathi'
 import { PathDetailsPoint } from '@/stores/PathDetailsStore'
 import { POI } from '@/stores/POIsStore'
 import { Settings } from '@/stores/SettingsStore'
@@ -137,9 +138,9 @@ export class RouteRequestFailed extends ErrorAction {
 export class ClearRoute implements Action {}
 
 export class SetSelectedPath implements Action {
-    readonly path: Path
+    readonly path: Path | SegmentedPath
 
-    constructor(path: Path) {
+    constructor(path: Path | SegmentedPath) {
         this.path = path
     }
 }

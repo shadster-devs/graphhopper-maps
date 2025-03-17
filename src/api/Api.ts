@@ -350,7 +350,6 @@ export class ApiImpl implements Api {
             .map((path: Path) => {
                 return {
                     ...path,
-                    instructions: ApiImpl.setPointsOnInstructions(path),
                 }
             })
     }
@@ -373,19 +372,6 @@ export class ApiImpl implements Api {
                 coordinates: ApiImpl.decodePath(path.snapped_waypoints as string, is3D, multiplier),
             }
         } else return path.snapped_waypoints as LineString
-    }
-
-    private static setPointsOnInstructions(path: Path) {
-        if (path.instructions) {
-            return path.instructions.map(instruction => {
-                return {
-                    ...instruction,
-                    points: path.points.coordinates.slice(instruction.interval[0], instruction.interval[1] + 1),
-                }
-            })
-        } else {
-            return path.instructions
-        }
     }
 
     private static decodePath(encoded: string, is3D: boolean, multiplier: number): number[][] {

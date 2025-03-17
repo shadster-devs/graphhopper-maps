@@ -15,14 +15,24 @@
         "test": "jest"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.0",
+        "@mui/icons-material": "^6.4.7",
+        "@mui/material": "^6.4.7",
+        "axios": "^1.8.3",
+        "cors": "^2.8.5",
         "custom-model-editor": "github:graphhopper/custom-model-editor#5ebd80570329f7abfc95c39624be1f1a379cf392",
+        "express": "^4.21.2",
         "geojson": "^0.5.0",
         "heightgraph": "github:easbar/Leaflet.Heightgraph#5f4f0b1fff3646aa071981381f5955c9e6f111f0",
         "ol": "10.4.0",
         "ol-mapbox-style": "12.5.0",
+        "puppeteer": "^24.4.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-responsive": "^10.0.1"
+        "react-icons": "^5.5.0",
+        "react-responsive": "^10.0.1",
+        "uuid": "^11.1.0"
     },
     "devDependencies": {
         "@svgr/webpack": "^8.0.1",

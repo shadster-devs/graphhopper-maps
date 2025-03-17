@@ -33,6 +33,7 @@ import { ErrorAction, InfoReceived } from '@/actions/Actions'
 import POIsStore from '@/stores/POIsStore'
 import { setDistanceFormat } from '@/Converters'
 import { AddressParseResult } from '@/pois/AddressParseResult'
+import { PathDisplayMode } from '@/stores/SettingsStore'
 
 console.log(`Source code: https://github.com/graphhopper/graphhopper-maps/tree/${GIT_SHA}`)
 
@@ -51,8 +52,26 @@ const initialCustomModelStr = url.searchParams.get('custom_model')
 const queryStore = new QueryStore(getApi(), initialCustomModelStr)
 const routeStore = new RouteStore()
 
+// Check if isScreenshot is set to true in the URL query parameters
+const isScreenshot = url.searchParams.get('isScreenshot') === 'true'
+
+// Check if pathDisplayMode is specified in query parameters
+const pathDisplayModeParam = url.searchParams.get('pathDisplayMode')
+let pathDisplayMode = PathDisplayMode.Dynamic // Default to dynamic mode
+if (pathDisplayModeParam === 'status') {
+    pathDisplayMode = PathDisplayMode.Static
+}
+
+// Create a new SettingsStore with isScreenshot and pathDisplayMode set based on URL parameters
+const settingsStore = new SettingsStore()
+if (isScreenshot) {
+    settingsStore.state.isScreenshot = true
+    settingsStore.state.pathDisplayMode = PathDisplayMode.Static
+}
+
+
 setStores({
-    settingsStore: new SettingsStore(),
+    settingsStore: settingsStore,
     queryStore: queryStore,
     routeStore: routeStore,
     infoStore: new ApiInfoStore(),

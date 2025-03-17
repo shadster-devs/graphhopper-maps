@@ -11,16 +11,14 @@ import { QueryStoreState } from '@/stores/QueryStore'
 
 interface MapPopupProps {
     map: Map
-    pathDetails: PathDetailsStoreState
     mapFeatures: MapFeatureStoreState
     poiState: POIsStoreState
     query: QueryStoreState
 }
 
-export default function MapPopups({ map, pathDetails, mapFeatures, poiState, query }: MapPopupProps) {
+export default function MapPopups({ map, mapFeatures, poiState, query }: MapPopupProps) {
     return (
         <>
-            <PathDetailPopup map={map} pathDetails={pathDetails} />
             <MapFeaturePopup
                 map={map}
                 properties={mapFeatures.roadAttributes}

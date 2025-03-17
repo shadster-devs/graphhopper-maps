@@ -8,6 +8,7 @@ import { RouteStoreState } from '@/stores/RouteStore'
 import { findNextWayPoint } from '@/map/findNextWayPoint'
 import { tr } from '@/translation/Translation'
 import { MarkerComponent } from '@/map/Marker'
+import { Position } from 'geojson'
 
 export function ContextMenuContent({
     coordinate,
@@ -48,16 +49,24 @@ export function ContextMenuContent({
         if (point) {
             dispatchSetPoint(point, coordinate)
         } else {
-            const routes = route.routingResult.paths.map(p => {
+            // Collect all coordinates from all segments of all paths
+            const routes = route.routingResult.paths.map(path => {
+                // Flatten all segment coordinates into a single array
+                const allCoordinates: Position[] = [];
+                path.segments.forEach(segment => {
+                    allCoordinates.push(...segment.points.coordinates);
+                });
+                
                 return {
-                    coordinates: p.points.coordinates.map(pos => {
+                    coordinates: allCoordinates.map((pos: Position) => {
                         return { lat: pos[1], lng: pos[0] }
                     }),
-                    wayPoints: p.snapped_waypoints.coordinates.map(pos => {
+                    wayPoints: allCoordinates.map((pos: Position) => {
                         return { lat: pos[1], lng: pos[0] }
                     }),
                 }
             })
+            
             // note that we can use the index returned by findNextWayPoint no matter which route alternative was found
             // to be closest to the clicked location, because for every route the n-th snapped_waypoint corresponds to
             // the n-th query point
@@ -78,7 +87,7 @@ export function ContextMenuContent({
     // This is a workaround to make sure that clicks on the context menu entries are not handled by the underlying map.
     // Without this a click on the menu entries would e.g. close the menu without triggering the selected action.
     // https://github.com/openlayers/openlayers/issues/6948#issuecomment-374915823
-    const convertToClick = (e: any) => {
+    const convertToClick = (e: React.MouseEvent) => {
         const evt = new MouseEvent('click', { bubbles: true })
         evt.stopPropagation = () => {}
         e.target.dispatchEvent(evt)

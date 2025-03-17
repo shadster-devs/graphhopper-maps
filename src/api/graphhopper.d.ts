@@ -41,12 +41,10 @@ export interface RoutingResultInfo {
 }
 
 export interface RoutingResult {
-    readonly info: RoutingResultInfo
     readonly paths: Path[]
 }
 
 export interface RawResult {
-    readonly info: RoutingResultInfo
     readonly paths: RawPath[]
 }
 
@@ -75,43 +73,13 @@ export interface RawPath extends BasePath {
 export interface BasePath {
     readonly distance: number
     readonly time: number
-    readonly ascend: number
-    readonly descend: number
     readonly points_encoded: boolean
     readonly points_encoded_multiplier: number
     readonly bbox?: Bbox
-    readonly instructions: Instruction[]
-    readonly details: Details
     readonly points_order: number[]
     readonly description: string
 }
 
-export interface Instruction {
-    readonly distance: number
-    readonly interval: [number, number]
-    readonly points: number[][]
-    readonly sign: number
-    readonly text: string
-    readonly motorway_junction: string
-    readonly time: number
-}
-
-interface Details {
-    readonly street_name: [number, number, string][]
-    readonly toll: [number, number, string][]
-    readonly max_speed: [number, number, number][]
-    readonly road_class: [number, number, string][]
-    readonly road_environment: [number, number, string][]
-    readonly road_access: [number, number, string][]
-    readonly access_conditional: [number, number, string][]
-    readonly foot_conditional: [number, number, string][]
-    readonly bike_conditional: [number, number, string][]
-    readonly track_type: [number, number, string][]
-    readonly country: [number, number, string][]
-    readonly get_off_bike: [number, number, boolean][]
-    readonly mtb_rating: [number, number, boolean][]
-    readonly hike_rating: [number, number, boolean][]
-}
 
 export interface TagHash {
     [key: string]: string
