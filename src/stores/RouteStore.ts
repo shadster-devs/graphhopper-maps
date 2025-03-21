@@ -1,9 +1,8 @@
 import Store from '@/stores/Store'
 import { Action } from '@/stores/Dispatcher'
 import { ClearPoints, ClearRoute, RemovePoint, RouteRequestSuccess, SetPoint, SetSelectedPath } from '@/actions/Actions'
-import { Path, RoutingResult } from '@/api/graphhopper'
 import { SegmentedPath, SegmentedRoutingResult } from '@/api/sarathi'
-import { convertPathToSegmented, convertToSegmentedPaths } from '@/api/DataConverter'
+import { LineString } from 'geojson'
 
 export interface RouteStoreState {
     routingResult: SegmentedRoutingResult
@@ -13,12 +12,15 @@ export interface RouteStoreState {
 export default class RouteStore extends Store<RouteStoreState> {
     private static getEmptyPath(): SegmentedPath {
         return {
-            bbox: undefined,
+            summary: '',
+            travelDuration: 0,
+            price: {
+                price: 0,
+                currency: ''
+            },
+            segments: [],
             distance: 0,
-            time: 0,
-            points_encoded: false,
-            points_encoded_multiplier: 1e5,
-            segments: []
+            pathId: ''
         };
     }
 
@@ -30,14 +32,9 @@ export default class RouteStore extends Store<RouteStoreState> {
         if (action instanceof RouteRequestSuccess) {
             return this.reduceRouteReceived(state, action)
         } else if (action instanceof SetSelectedPath) {
-            // Convert the selected path to segmented format if it's not already
-            const segmentedPath = 'segments' in action.path 
-                ? action.path as SegmentedPath
-                : convertPathToSegmented(action.path as Path);
-                
             return {
                 ...state,
-                selectedPath: segmentedPath,
+                selectedPath: action.path as SegmentedPath,
             }
         } else if (
             action instanceof SetPoint ||
@@ -53,27 +50,75 @@ export default class RouteStore extends Store<RouteStoreState> {
     private static getInitialState(): RouteStoreState {
         return {
             routingResult: {
-                paths: [],
+                success: false,
+                data: {
+                    header: '',
+                    from: {
+                        place: '',
+                        id: '',
+                        sid: 0,
+                        type: 0,
+                        cc: ''
+                    },
+                    to: {
+                        place: '',
+                        id: '',
+                        sid: 0,
+                        type: 0,
+                        cc: ''
+                    },
+                    count: 0,
+                    routes: []
+                }
             },
             selectedPath: RouteStore.getEmptyPath(),
         }
     }
 
-    private reduceRouteReceived(state: RouteStoreState, action: RouteRequestSuccess) {
-        if (action.result.paths && action.result.paths.length > 0) {
-            console.log("Unsegmented Routing Result JSON:", JSON.stringify(action.result));
-            // Convert all paths to segmented format
-            const segmentedResult = convertToSegmentedPaths(action.result);
-            console.log("Segmented Routing Result JSON:", JSON.stringify(segmentedResult));
+    private reduceRouteReceived(state: RouteStoreState, action: RouteRequestSuccess): RouteStoreState {
+        // Handle the new Sarathi API response format
+        if (action.result.success && action.result.data?.routes && action.result.data.routes.length > 0) {
+            console.log("Sarathi API Response:", JSON.stringify(action.result));
+
+            // Ensure each segment has a points property
+            const routesWithPoints = action.result.data.routes.map(route => {
+                const segmentsWithPoints = route.segments.map(segment => {
+                    // If points is empty, initialize with source and destination geo coordinates
+                    if (!segment.points && segment.source.geo && segment.destination.geo) {
+                        segment.points = {
+                            type: 'LineString',
+                            coordinates: [
+                                [segment.source.geo.lng, segment.source.geo.lat, 0],
+                                [segment.destination.geo.lng, segment.destination.geo.lat, 0]
+                            ]
+                        } as LineString;
+                    }
+                    return segment;
+                });
+                
+                return {
+                    ...route,
+                    segments: segmentsWithPoints
+                };
+            });
+
+            const result = {
+                ...action.result,
+                data: {
+                    ...action.result.data,
+                    routes: routesWithPoints
+                }
+            };
+
             return {
-                routingResult: segmentedResult,
-                selectedPath: segmentedResult.paths[0],
+                routingResult: result,
+                selectedPath: result.data.routes[0],
             }
         }
         return RouteStore.getInitialState()
     }
 
-    private static containsPaths(paths: any[]) {
-        return paths.length > 0
+    private static containsPaths(routes: any[]) {
+        return routes.length > 0
     }
 }

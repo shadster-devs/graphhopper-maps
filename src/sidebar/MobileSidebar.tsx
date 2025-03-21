@@ -84,7 +84,7 @@ export default function ({ query, route, error, encodedValues, drawAreas, map }:
 }
 
 function hasResult(route: RouteStoreState) {
-    return route.routingResult.paths.length > 0
+    return route.routingResult.data.routes.length > 0
 }
 
 function SmallSearchView(props: { points: QueryPoint[]; onClick: () => void }) {

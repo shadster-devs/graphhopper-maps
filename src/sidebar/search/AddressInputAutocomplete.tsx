@@ -1,6 +1,8 @@
 import styles from './AddressInputAutocomplete.module.css'
 import { Bbox } from '@/api/graphhopper'
 import { AddressParseResult } from '@/pois/AddressParseResult'
+import { SarathiLocation } from '@/stores/QueryStore'
+import { FaLocationDot } from 'react-icons/fa6'
 
 export interface AutocompleteItem {}
 
@@ -9,16 +11,32 @@ export class GeocodingItem implements AutocompleteItem {
     secondText: string
     point: { lat: number; lng: number }
     bbox: Bbox
+    sarathiLocation?: SarathiLocation
 
-    constructor(mainText: string, secondText: string, point: { lat: number; lng: number }, bbox: Bbox) {
+    constructor(
+        mainText: string, 
+        secondText: string, 
+        point: { lat: number; lng: number }, 
+        bbox: Bbox,
+        sarathiLocation?: SarathiLocation
+    ) {
         this.mainText = mainText
         this.secondText = secondText
         this.point = point
         this.bbox = bbox
+        this.sarathiLocation = sarathiLocation
     }
 
     toText() {
-        return this.mainText + ', ' + this.secondText
+        if (!this.secondText) {
+            return this.mainText;
+        }
+        
+        if (this.mainText.includes(this.secondText)) {
+            return this.mainText;
+        }
+        
+        return this.mainText + ', ' + this.secondText;
     }
 }
 
@@ -69,8 +87,13 @@ export function POIQueryEntry({
     return (
         <AutocompleteEntry isHighlighted={isHighlighted} onSelect={() => onSelect(item)}>
             <div className={styles.poiEntry}>
-                <span className={styles.poiEntryPrimaryText}>{poi.charAt(0).toUpperCase() + poi.slice(1)}</span>
-                <span>{item.result.text('')}</span>
+                <span className={styles.locationIcon}>
+                    <FaLocationDot color="#5b616a" />
+                </span>
+                <div className={styles.poiContent}>
+                    <span className={styles.poiEntryPrimaryText}>{poi.charAt(0).toUpperCase() + poi.slice(1)}</span>
+                    <span>{item.result.text('')}</span>
+                </div>
             </div>
         </AutocompleteEntry>
     )
@@ -88,8 +111,18 @@ function GeocodingEntry({
     return (
         <AutocompleteEntry isHighlighted={isHighlighted} onSelect={() => onSelect(item)}>
             <div className={styles.geocodingEntry} title={item.toText()}>
-                <span className={styles.mainText}>{item.mainText}</span>
-                <span className={styles.secondaryText}>{item.secondText}</span>
+                <div className={styles.geocodingEntryContent}>
+                    <span className={styles.locationIcon}>
+                        <FaLocationDot color="#5b616a" />
+                    </span>
+                    <div className={styles.textContent}>
+                        <span className={styles.mainText}>{item.mainText}</span>
+                        {/* Only show secondaryText if it adds meaningful information */}
+                        {item.secondText && !item.mainText.includes(item.secondText) && (
+                            <span className={styles.secondaryText}>{item.secondText}</span>
+                        )}
+                    </div>
+                </div>
             </div>
         </AutocompleteEntry>
     )

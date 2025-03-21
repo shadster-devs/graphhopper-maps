@@ -9,6 +9,7 @@ import { findNextWayPoint } from '@/map/findNextWayPoint'
 import { tr } from '@/translation/Translation'
 import { MarkerComponent } from '@/map/Marker'
 import { Position } from 'geojson'
+import { SegmentedPath, Segment } from '@/api/sarathi'
 
 export function ContextMenuContent({
     coordinate,
@@ -50,11 +51,13 @@ export function ContextMenuContent({
             dispatchSetPoint(point, coordinate)
         } else {
             // Collect all coordinates from all segments of all paths
-            const routes = route.routingResult.paths.map(path => {
+            const routes = route.routingResult.data.routes.map(path => {
                 // Flatten all segment coordinates into a single array
                 const allCoordinates: Position[] = [];
                 path.segments.forEach(segment => {
-                    allCoordinates.push(...segment.points.coordinates);
+                    if (segment.points && segment.points.coordinates) {
+                        allCoordinates.push(...segment.points.coordinates);
+                    }
                 });
                 
                 return {
@@ -96,48 +99,6 @@ export function ContextMenuContent({
 
     return (
         <div className={styles.wrapper} onMouseUp={convertToClick}>
-            <button className={styles.entry} onClick={() => dispatchSetPoint(queryPoints[0], coordinate)}>
-                <div>
-                    <MarkerComponent size={16} color={QueryStore.getMarkerColor(QueryPointType.From)} />
-                </div>
-                <span>{tr('set_start')}</span>
-            </button>
-            <button
-                className={styles.entry}
-                disabled={disableViaPoint(queryPoints)}
-                onClick={() => setViaPoint(queryPoints, route)}
-            >
-                <div>
-                    <MarkerComponent size={16} color={QueryStore.getMarkerColor(QueryPointType.Via)} />
-                </div>
-                <span>{tr('set_intermediate')}</span>
-            </button>
-            <button
-                style={showAddLocation ? {} : { paddingBottom: '10px' }}
-                className={styles.entry}
-                onClick={() => dispatchSetPoint(queryPoints[queryPoints.length - 1], coordinate)}
-            >
-                <div>
-                    <MarkerComponent size={16} color={QueryStore.getMarkerColor(QueryPointType.To)} />
-                </div>
-                <span>{tr('set_end')}</span>
-            </button>
-            {showAddLocation && (
-                <button
-                    style={{ paddingBottom: '10px' }}
-                    className={styles.entry}
-                    onClick={() => dispatchAddPoint(coordinate)}
-                >
-                    <div>
-                        <MarkerComponent
-                            size={16}
-                            color={QueryStore.getMarkerColor(QueryPointType.To)}
-                            number={'\uFF0B'}
-                        />
-                    </div>
-                    <span>{tr('add_to_route')}</span>
-                </button>
-            )}
             <button
                 style={{ borderTop: '1px solid lightgray', paddingTop: '10px' }}
                 className={styles.entry}
@@ -156,19 +117,72 @@ export function ContextMenuContent({
             >
                 {tr('center_map')}
             </button>
-            <button
-                className={styles.entry}
-                onClick={() => {
-                    onSelect()
-                    window.open(
-                        `https://www.openstreetmap.org/query?lat=${coordinate.lat}&lon=${coordinate.lng}`,
-                        '_blank',
-                        'noopener,noreferrer'
-                    )
-                }}
-            >
-                {tr('query_osm')}
-            </button>
         </div>
     )
+}
+
+// Add a function to calculate distance from point to segment
+function distancePointToSegment(point: Coordinate, segment: Segment): number {
+    // If segment doesn't have points, return a large distance
+    if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+        return Number.MAX_VALUE;
+    }
+    
+    // Calculate the minimum distance from point to any segment of the path
+    let minDistance = Number.MAX_VALUE;
+    
+    for (let i = 0; i < segment.points.coordinates.length - 1; i++) {
+        const start = segment.points.coordinates[i];
+        const end = segment.points.coordinates[i + 1];
+        
+        // Calculate distance from point to line segment
+        const distance = distanceToLineSegment(
+            point.lng, point.lat,
+            start[0], start[1],
+            end[0], end[1]
+        );
+        
+        minDistance = Math.min(minDistance, distance);
+    }
+    
+    return minDistance;
+}
+
+// Helper function to calculate distance from point to line segment
+function distanceToLineSegment(
+    px: number, py: number,
+    x1: number, y1: number,
+    x2: number, y2: number
+): number {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    
+    if (len_sq !== 0) {
+        param = dot / len_sq;
+    }
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    const dx = px - xx;
+    const dy = py - yy;
+    
+    // Use Euclidean distance
+    return Math.sqrt(dx * dx + dy * dy);
 }

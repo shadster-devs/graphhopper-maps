@@ -1,7 +1,7 @@
 import { Action } from '@/stores/Dispatcher'
 import { Coordinate, QueryPoint } from '@/stores/QueryStore'
-import { ApiInfo, Bbox, Path, RoutingArgs, RoutingProfile, RoutingResult } from '@/api/graphhopper'
-import { SegmentedPath } from '@/api/sarathi'
+import { ApiInfo, Bbox, Path, RoutingArgs, RoutingProfile } from '@/api/graphhopper'
+import { SegmentedPath, SegmentedRoutingResult } from '@/api/sarathi'
 import { PathDetailsPoint } from '@/stores/PathDetailsStore'
 import { POI } from '@/stores/POIsStore'
 import { Settings } from '@/stores/SettingsStore'
@@ -107,11 +107,11 @@ export class SetCustomModel implements Action {
 }
 
 export class RouteRequestSuccess implements Action {
-    readonly result: RoutingResult
+    readonly result: SegmentedRoutingResult
     readonly request: RoutingArgs
     readonly zoom: boolean
 
-    constructor(request: RoutingArgs, zoom: boolean, result: RoutingResult) {
+    constructor(request: RoutingArgs, zoom: boolean, result: SegmentedRoutingResult) {
         this.result = result
         this.request = request
         this.zoom = zoom

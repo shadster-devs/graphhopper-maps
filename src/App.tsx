@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from 'react'
+import { useEffect, useState, useContext, useCallback } from 'react'
 import styles from './App.module.css'
 import {
     getApiInfoStore,
@@ -65,6 +65,52 @@ export default function App() {
 
     const map = getMap()
 
+    // Add a new useEffect to handle map center adjustment for the wider sidebar
+    useEffect(() => {
+        // Function to adjust the map center based on sidebar width
+        const adjustMapCenter = () => {
+            // Only adjust if not in small screen mode (where sidebar is on top)
+            const isSmallScreen = window.innerWidth <= 44 * 16; // 44rem in pixels
+            if (!isSmallScreen && map) {
+                // Calculate the sidebar offset (as a fraction of the map width)
+                const sidebarWidthPct = 0.4; // 40% of screen width
+                const offsetRatio = sidebarWidthPct / 2; // Center needs to move by half the sidebar width ratio
+                
+                // Get current view and its properties
+                const view = map.getView();
+                const currentCenter = view.getCenter();
+                const mapSize = map.getSize();
+                
+                if (currentCenter && mapSize) {
+                    // Calculate the offset in pixels then convert to map coordinates
+                    const offsetPixels = mapSize[0] * offsetRatio;
+                    const resolution = view.getResolution() || 1;
+                    const offsetCoords = [offsetPixels * resolution, 0];
+                    
+                    // Apply the offset to the center
+                    const newCenter = [
+                        currentCenter[0] + offsetCoords[0],
+                        currentCenter[1]
+                    ];
+                    
+                    // Update the view center
+                    view.setCenter(newCenter);
+                }
+            }
+        };
+        
+        // Adjust when component mounts
+        adjustMapCenter();
+        
+        // Add resize listener to readjust when window size changes
+        window.addEventListener('resize', adjustMapCenter);
+        
+        // Clean up
+        return () => {
+            window.removeEventListener('resize', adjustMapCenter);
+        };
+    }, [map]);
+
     useEffect(() => {
         const onSettingsChanged = () => setSettings(getSettingsStore().state)
         const onQueryChanged = () => setQuery(getQueryStore().state)
@@ -110,10 +156,10 @@ export default function App() {
     // our different map layers
     useBackgroundLayer(map, mapOptions.selectedStyle)
     useExternalMVTLayer(map, mapOptions.externalMVTEnabled)
-    useMapBorderLayer(map, info.bbox)
+    // useMapBorderLayer(map, info.bbox)
     useAreasLayer(map, settings.drawAreasEnabled, query.customModelStr, query.customModelEnabled)
     useRoutingGraphLayer(map, mapOptions.routingGraphEnabled)
-    usePathsLayer(map, route.routingResult.paths, route.selectedPath, query.queryPoints)
+    usePathsLayer(map, route.routingResult.data.routes, route.selectedPath, query.queryPoints)
     useQueryPointsLayer(map, query.queryPoints)
     usePOIsLayer(map, pois)
     
@@ -238,7 +284,7 @@ function TransportModeLegend({ route }: { route: RouteStoreState }) {
     const legendStyle = {
         position: 'absolute' as const,
         bottom: '20px',
-        left: '20px',
+        right: '20px',
         backgroundColor: 'white',
         padding: '10px',
         borderRadius: '5px',
@@ -263,46 +309,71 @@ function TransportModeLegend({ route }: { route: RouteStoreState }) {
         const height = TRANSPORT_MODE_WIDTHS[mode as keyof typeof TRANSPORT_MODE_WIDTHS] || TRANSPORT_MODE_WIDTHS.default;
         
         switch(mode) {
-            case 'flight':
+            case 'FLIGHTS':
                 return {
                     width: '40px',
                     height: `${height}px`,
-                    background: `repeating-linear-gradient(to right, ${TRANSPORT_MODE_COLORS.flight.selected} 0px, ${TRANSPORT_MODE_COLORS.flight.selected} 3px, transparent 3px, transparent 8px)`,
+                    background: `repeating-linear-gradient(to right, ${TRANSPORT_MODE_COLORS.FLIGHTS.selected} 0px, ${TRANSPORT_MODE_COLORS.FLIGHTS.selected} 5px, transparent 5px, transparent 10px)`,
+                    borderRadius: '2px'
                 };
-            case 'train':
+            case 'RAILS':
                 return {
                     width: '40px',
                     height: `${height}px`,
-                    background: `repeating-linear-gradient(to right, ${TRANSPORT_MODE_COLORS.train.selected} 0px, ${TRANSPORT_MODE_COLORS.train.selected} 6px, transparent 6px, transparent 16px)`,
+                    background: `repeating-linear-gradient(to right, ${TRANSPORT_MODE_COLORS.RAILS.selected} 0px, ${TRANSPORT_MODE_COLORS.RAILS.selected} 10px, transparent 10px, transparent 15px)`,
+                    borderRadius: '2px'
                 };
-            case 'bus':
+            case 'BUS':
                 return {
                     width: '40px',
                     height: `${height}px`,
-                    backgroundColor: TRANSPORT_MODE_COLORS.bus.selected,
+                    backgroundColor: TRANSPORT_MODE_COLORS.BUS.selected,
+                    borderRadius: '2px'
                 };
-            case 'cab':
+            case 'CAB':
                 return {
                     width: '40px',
                     height: `${height}px`,
-                    backgroundColor: TRANSPORT_MODE_COLORS.cab.selected,
+                    backgroundColor: TRANSPORT_MODE_COLORS.CAB.selected,
+                    borderRadius: '2px'
                 };
             default:
                 return {
                     width: '40px',
                     height: `${height}px`,
                     backgroundColor: 'gray',
+                    borderRadius: '2px'
                 };
         }
     };
 
+    // Get unique transport modes from the selected path
+    const getUniqueModes = () => {
+        if (!route.selectedPath.segments) return [];
+        
+        // Get the modes and normalize them to our standard keys
+        const modes = route.selectedPath.segments.map(segment => {
+            const mode = segment.mode?.toUpperCase() || '';
+            if (mode === 'FLIGHTS' || mode === 'FLIGHT') return 'FLIGHTS';
+            if (mode === 'RAILS' || mode === 'RAIL' || mode === 'TRAIN') return 'RAILS';
+            if (mode === 'BUS') return 'BUS';
+            if (mode === 'CAB' || mode === 'TAXI') return 'CAB';
+            return mode;
+        });
+        
+        // Get unique modes to avoid duplicates
+        return [...new Set(modes)];
+    };
+    
+    const uniqueModes = getUniqueModes();
+    
     return (
         <div style={legendStyle}>
             <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '13px' }}>Transport Modes</div>
-            {TRANSPORT_MODES.map((mode) => (
+            {uniqueModes.map((mode) => (
                 <div key={mode} style={legendItemStyle}>
                     <div style={getLineStyle(mode)}></div>
-                    <span>{TRANSPORT_MODE_LABELS[mode as keyof typeof TRANSPORT_MODE_LABELS]}</span>
+                    <span>{TRANSPORT_MODE_LABELS[mode as keyof typeof TRANSPORT_MODE_LABELS] || mode}</span>
                 </div>
             ))}
         </div>
@@ -334,14 +405,22 @@ function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues
                         <PlainButton onClick={() => setShowSidebar(false)} className={styles.sidebarCloseButton}>
                             <Cross />
                         </PlainButton>
-                        <Search points={query.queryPoints} map={map} />
-                        <div>{!error.isDismissed && <ErrorMessage error={error} />}</div>
-                        <RoutingResults
-                            paths={route.routingResult.paths}
-                            selectedPath={route.selectedPath}
-                            currentRequest={query.currentRequest}
-                            profile={query.routingProfile.name}
-                        />
+                        
+                        {/* Fixed container for search inputs */}
+                        <div className={styles.fixedSearchContainer}>
+                            <Search points={query.queryPoints} map={map} />
+                            <div>{!error.isDismissed && <ErrorMessage error={error} />}</div>
+                        </div>
+                        
+                        {/* Scrollable container for routing results */}
+                        <div className={styles.scrollableResults}>
+                            <RoutingResults
+                                paths={route.routingResult.data.routes}
+                                selectedPath={route.selectedPath}
+                                currentRequest={query.currentRequest}
+                                profile={query.routingProfile.name}
+                            />
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -352,10 +431,6 @@ function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues
                 </div>
             )}
             <div className={styles.popupContainer} id={POPUP_CONTAINER_ID} />
-            <div className={styles.onMapRightSide}>
-                <MapOptions {...mapOptions} />
-                <LocationButton queryPoints={query.queryPoints} />
-            </div>
             <div className={styles.map}>
                 <MapComponent map={map} />
                 <TransportModeLegend route={route} />

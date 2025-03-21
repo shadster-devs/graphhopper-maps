@@ -1,5 +1,5 @@
 import { LineString } from 'geojson'
-import { Coordinate, CustomModel } from '@/stores/QueryStore'
+import { Coordinate, CustomModel, SarathiLocation } from '@/stores/QueryStore'
 
 // minLon, minLat, maxLon, maxLat
 export type Bbox = [number, number, number, number]
@@ -9,6 +9,8 @@ export interface RoutingArgs {
     readonly profile: string
     readonly maxAlternativeRoutes: number
     readonly customModel: CustomModel | null
+    readonly sarathiSourceLocation?: SarathiLocation
+    readonly sarathiDestLocation?: SarathiLocation
 }
 
 export interface RoutingRequest {
@@ -111,4 +113,5 @@ export interface GeocodingHit {
     readonly street: string
     readonly housenumber: string
     readonly postcode: string
+    readonly sarathiLocation?: SarathiLocation
 }

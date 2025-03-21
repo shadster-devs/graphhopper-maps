@@ -76,53 +76,75 @@ export default function useStaticTransportIcons(map: Map, selectedPath: Segmente
     
     // Add an icon for each segment in the middle of the path
     selectedPath.segments.forEach((segment) => {
-      // Render the icon to string
-      const iconSvg = renderToString(getTransportIcon(segment.mode));
+      // Determine coordinates for the icon - either from segment points or directly from source/destination
+      let coordinates: number[][] = [];
       
-      // Get the coordinates of the segment
-      const coordinates = segment.points.coordinates.map(coord => fromLonLat(coord));
+      if (segment.points && segment.points.coordinates && segment.points.coordinates.length > 0) {
+        // Use existing points if available
+        coordinates = segment.points.coordinates.map(coord => fromLonLat(coord));
+      } else if (segment.source && segment.source.geo && segment.destination && segment.destination.geo) {
+        // If no points but we have source and destination with geo, create a direct line
+        const srcCoord = fromLonLat([segment.source.geo.lng, segment.source.geo.lat]);
+        const destCoord = fromLonLat([segment.destination.geo.lng, segment.destination.geo.lat]);
+        coordinates = [srcCoord, destCoord];
+      }
       
-      // Put the icon in the middle of the path
-      const midIndex = Math.floor(coordinates.length / 2);
-      let midPoint;
-      
-      if (coordinates.length === 1) {
-        // If there's only one point, use it
-        midPoint = coordinates[0];
-      } else if (coordinates.length >= 2) {
-        // If there are multiple points, use the middle one, or calculate a midpoint
-        if (coordinates.length % 2 === 1) {
-          // Odd number of points, use the middle one
-          midPoint = coordinates[midIndex];
-        } else {
-          // Even number of points, calculate midpoint between the two middle ones
-          const prev = coordinates[midIndex - 1];
-          const next = coordinates[midIndex];
-          midPoint = [(prev[0] + next[0]) / 2, (prev[1] + next[1]) / 2];
+      // Only proceed if we have coordinates
+      if (coordinates.length > 0) {
+        // Normalize the mode from Sarathi API format
+        const normalizedMode = segment.mode?.toLowerCase() || '';
+        let mappedMode = normalizedMode;
+        
+        // Map Sarathi API enum values to our local values
+        if (normalizedMode === 'flights') mappedMode = 'flight';
+        if (normalizedMode === 'rails') mappedMode = 'train';
+        
+        // Render the icon to string using the mapped mode
+        const iconSvg = renderToString(getTransportIcon(mappedMode));
+        
+        // Put the icon in the middle of the path
+        const midIndex = Math.floor(coordinates.length / 2);
+        let midPoint: number[] | undefined;
+        
+        if (coordinates.length === 1) {
+          // If there's only one point, use it
+          midPoint = coordinates[0];
+        } else if (coordinates.length >= 2) {
+          // If there are multiple points, use the middle one, or calculate a midpoint
+          if (coordinates.length % 2 === 1) {
+            // Odd number of points, use the middle one
+            midPoint = coordinates[midIndex];
+          } else {
+            // Even number of points, calculate midpoint between the two middle ones
+            const prev = coordinates[midIndex - 1];
+            const next = coordinates[midIndex];
+            midPoint = [(prev[0] + next[0]) / 2, (prev[1] + next[1]) / 2];
+          }
         }
-      } else {
-        // No coordinates, skip this segment
-        return;
+        
+        // Only create feature if we have a valid midpoint
+        if (midPoint) {
+          // Create a feature for the icon
+          const iconFeature = new Feature({
+            geometry: new Point(midPoint),
+          });
+          
+          // Calculate rotation for flight segments
+          let rotation = 0;
+          if (mappedMode === 'flight' && coordinates.length >= 2) {
+            // For flights, get the angle between start and end points
+            const startPoint = coordinates[0];
+            const endPoint = coordinates[coordinates.length - 1];
+            rotation = calculateAngle(startPoint, endPoint);
+          }
+          
+          // Set the icon style with appropriate rotation
+          iconFeature.setStyle(createStaticIconStyle(iconSvg, rotation));
+          
+          // Add the feature to the layer
+          iconSource.addFeature(iconFeature);
+        }
       }
-      
-      // Create a feature with a point geometry at the midpoint
-      const feature = new Feature({
-        geometry: new Point(midPoint),
-        mode: segment.mode,
-      });
-      
-      // Calculate rotation for flight icons
-      let rotation = 0;
-      if (segment.mode === 'flight' && coordinates.length >= 2) {
-        // For flight mode, calculate angle between first and last point
-        rotation = calculateAngle(coordinates[0], coordinates[coordinates.length - 1]);
-      }
-      
-      // Set the icon style
-      feature.setStyle(createStaticIconStyle(iconSvg, rotation));
-      
-      // Add to the layer
-      iconSource.addFeature(feature);
     });
     
     // Cleanup function

@@ -4,7 +4,8 @@
 const config = {
     // the url of the GraphHopper routing backend, either use graphhopper.com or point it to your own GH instance
     //routingApi: 'https://graphhopper.com/api/1/',
-    routingApi: 'http://10.212.32.144:8989/',
+    // routingApi: 'http://10.212.32.144:8989/',
+    routingApi: 'https://www.makemytrip.com/',
     // the url of the geocoding backend, either use graphhopper.com or point it to another geocoding service. use an empty string to disable the address search
     geocodingApi: 'https://graphhopper.com/api/1/',
     //geocodingApi: 'https://nominatim.openstreetmap.org/',

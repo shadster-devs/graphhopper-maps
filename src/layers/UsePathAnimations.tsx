@@ -99,16 +99,32 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
     const features: Feature[] = [];
     
     selectedPath.segments.forEach((segment, index) => {
-      // Render the icon to string
-      const iconSvg = renderToString(getTransportIcon(segment.mode));
+      // Normalize the mode from Sarathi API format
+      const normalizedMode = segment.mode?.toLowerCase() || '';
+      let mappedMode = normalizedMode;
+      
+      // Map Sarathi API enum values to our local values
+      if (normalizedMode === 'flights') mappedMode = 'flight';
+      if (normalizedMode === 'rails') mappedMode = 'train';
+      
+      // Render the icon to string using the mapped mode
+      const iconSvg = renderToString(getTransportIcon(mappedMode));
+      
+      // Get source and destination coordinates from the new format
+      const sourceCoords = segment.source.geo ? 
+        [segment.source.geo.lng, segment.source.geo.lat] : 
+        [0, 0]; // Default coordinates if source.geo is not available
       
       // Create a feature with a point geometry
       const feature = new Feature({
-        geometry: new Point(fromLonLat(segment.from)),
+        geometry: new Point(fromLonLat(sourceCoords)),
         segmentIndex: index,
-        mode: segment.mode,
-        path: segment.points.coordinates.map(coord => fromLonLat(coord)),
-        pathLength: segment.points.coordinates.length,
+        mode: mappedMode, // Use the mapped mode for consistency
+        path: segment.points && segment.points.coordinates ? 
+          segment.points.coordinates.map(coord => fromLonLat(coord)) : 
+          [fromLonLat(sourceCoords)], // Fallback to a single point if coordinates not available
+        pathLength: segment.points && segment.points.coordinates ? 
+          segment.points.coordinates.length : 1,
         progress: 0, // Track animation progress (0-1)
         isActive: false, // Track if this segment is currently animating
         iconSvg: iconSvg, // Store the SVG string for later style updates
@@ -118,7 +134,9 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       const isFirstSegment = index === 0;
       
       // If it's the first segment and it's a flight, calculate initial rotation
-      if (isFirstSegment && segment.mode === 'flight' && segment.points.coordinates.length > 1) {
+      if (isFirstSegment && mappedMode === 'flight' && 
+          segment.points && segment.points.coordinates && 
+          segment.points.coordinates.length > 1) {
         const path = feature.get('path');
         const initialRotation = calculateAngle(path[0], path[1]);
         feature.setStyle(createIconStyle(iconSvg, isFirstSegment, initialRotation));
@@ -212,53 +230,72 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
         const mode = feature.get('mode');
         const path = feature.get('path');
         
-        // Use uniform speed for all transport modes
-        const duration = BASE_SEGMENT_DURATION / UNIFORM_SPEED_FACTOR;
+        if (path.length < 2) {
+          return; // Skip animation if there's no path to follow
+        }
         
-        // Calculate progress for this segment (0-1)
-        // Reset elapsedTime relative to when this segment became active
+        // Use constant animation speed for all transport modes
         const segmentStartTime = feature.get('activationTime') || startTimeRef.current;
         const segmentElapsedTime = Date.now() - segmentStartTime;
-        let progress = Math.min(segmentElapsedTime / duration, 1);
         
-        // If this is a flight segment, add a slight arc to the animation
-        if (mode === 'flight' && path.length >= 2) {
-          // For flights, we want to animate along a straight path
-          const startPoint = path[0];
-          const endPoint = path[path.length - 1];
+        // Calculate total path distance
+        let totalDistance = 0;
+        for (let i = 1; i < path.length; i++) {
+          const dx = path[i][0] - path[i-1][0];
+          const dy = path[i][1] - path[i-1][1];
+          totalDistance += Math.sqrt(dx*dx + dy*dy);
+        }
         
-          // Linear interpolation
-          const t = progress;
-          const x = (1 - t) * startPoint[0] + t * endPoint[0];
-          const y = (1 - t) * startPoint[1] + t * endPoint[1];
+        // Calculate distance to travel based on constant speed
+        // Use a speed factor that works well for all modes - adjust this value as needed
+        const speedFactor = 300000; // Distance units per second
+        const distanceTraveled = (segmentElapsedTime / 1000) * speedFactor;
+        
+        // Convert distance to progress (0-1)
+        let progress = Math.min(distanceTraveled / totalDistance, 1);
+        
+        // Calculate position along the path (linear interpolation)
+        let currentDistance = 0;
+        let currentPosition = path[0];
+        let segmentStart = 0;
+        let segmentEnd = 0;
+        let segmentProgress = 0;
+        
+        // Find the current segment along the path
+        for (let i = 1; i < path.length; i++) {
+          const dx = path[i][0] - path[i-1][0];
+          const dy = path[i][1] - path[i-1][1];
+          const segmentLength = Math.sqrt(dx*dx + dy*dy);
           
-          // Calculate angle between start and end points
-          const angle = calculateAngle(startPoint, endPoint);
-          
-          // Cast the geometry to Point to access setCoordinates
-          const geometry = feature.getGeometry() as Point;
-          if (geometry) {
-            geometry.setCoordinates([x, y]);
-            // Update the feature style with the rotation angle
-            updateFeatureVisibility(feature, true, angle);
-          }
-        } else {
-          // For other modes, animate along the actual path
-          // Find the appropriate point along the path
-          const pathIndex = Math.min(
-            Math.floor(progress * path.length),
-            path.length - 1
-          );
-          
-          // For non-flight modes, we don't need to calculate direction angles
-          
-          // Cast the geometry to Point to access setCoordinates
-          const geometry = feature.getGeometry() as Point;
-          if (geometry) {
-            geometry.setCoordinates(path[pathIndex]);
+          if (currentDistance + segmentLength >= distanceTraveled || i === path.length - 1) {
+            // We're in this segment
+            segmentStart = i - 1;
+            segmentEnd = i;
+            segmentProgress = (distanceTraveled - currentDistance) / segmentLength;
+            segmentProgress = Math.max(0, Math.min(1, segmentProgress)); // Clamp between 0-1
             
-            // Only apply rotation to flight mode, but that case is handled above
-            // So here we just keep the current rotation
+            // Linear interpolation between points
+            const x = path[segmentStart][0] + segmentProgress * dx;
+            const y = path[segmentStart][1] + segmentProgress * dy;
+            currentPosition = [x, y];
+            break;
+          }
+          
+          currentDistance += segmentLength;
+        }
+        
+        // Update position
+        const geometry = feature.getGeometry() as Point;
+        if (geometry) {
+          geometry.setCoordinates(currentPosition);
+          
+          // Calculate rotation angle for the icon (direction of travel)
+          if (mode === 'flight') {
+            // For flights, always point in direction of overall travel
+            const startPoint = path[segmentStart];
+            const endPoint = path[segmentEnd]; 
+            const angle = calculateAngle(startPoint, endPoint);
+            updateFeatureVisibility(feature, true, angle);
           }
         }
         

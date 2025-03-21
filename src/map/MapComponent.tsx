@@ -2,7 +2,7 @@ import 'ol/ol.css'
 import styles from '@/map/Map.module.css'
 import { useEffect, useRef } from 'react'
 import { Map } from 'ol'
-import { Coordinate, getBBoxFromCoord } from '@/stores/QueryStore'
+import { Coordinate, getBBoxFromCoord, SarathiLocation } from '@/stores/QueryStore'
 import { Bbox } from '@/api/graphhopper'
 import Dispatcher from '@/stores/Dispatcher'
 import { ErrorAction } from '@/actions/Actions'
@@ -22,7 +22,7 @@ export default function ({ map }: MapComponentProps) {
 }
 
 export function onCurrentLocationSelected(
-    onSelect: (queryText: string, coordinate: Coordinate | undefined, bbox: Bbox | undefined) => void
+    onSelect: (queryText: string, coordinate: Coordinate | undefined, sarathiLocation?: SarathiLocation) => void
 ) {
     if (!navigator.geolocation) {
         Dispatcher.dispatch(new ErrorAction('Geolocation is not supported in this browser'))
@@ -33,7 +33,7 @@ export function onCurrentLocationSelected(
     navigator.geolocation.getCurrentPosition(
         position => {
             const coordinate = { lat: position.coords.latitude, lng: position.coords.longitude }
-            onSelect(tr('current_location'), coordinate, getBBoxFromCoord(coordinate))
+            onSelect(tr('current_location'), coordinate, undefined)
         },
         error => {
             Dispatcher.dispatch(new ErrorAction(tr('searching_location_failed') + ': ' + error.message))

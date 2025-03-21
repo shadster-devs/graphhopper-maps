@@ -1,11 +1,10 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { Coordinate, getBBoxFromCoord, QueryPoint, QueryPointType } from '@/stores/QueryStore'
+import { Coordinate, getBBoxFromCoord, QueryPoint, QueryPointType, SarathiLocation } from '@/stores/QueryStore'
 import { Bbox, GeocodingHit, ReverseGeocodingHit } from '@/api/graphhopper'
 import Autocomplete, { AutocompleteItem, GeocodingItem, POIQueryItem } from '@/sidebar/search/AddressInputAutocomplete'
 
 import ArrowBack from './arrow_back.svg'
 import Cross from '@/sidebar/times-solid-thin.svg'
-import CurrentLocationIcon from './current-location.svg'
 import styles from './AddressInput.module.css'
 import Api, { getApi } from '@/api/Api'
 import { tr } from '@/translation/Translation'
@@ -23,7 +22,7 @@ export interface AddressInputProps {
     point: QueryPoint
     points: QueryPoint[]
     onCancel: () => void
-    onAddressSelected: (queryText: string, coord: Coordinate | undefined) => void
+    onAddressSelected: (queryText: string, coord: Coordinate | undefined, sarathiLocation?: SarathiLocation) => void
     onChange: (value: string) => void
     clearDragDrop: () => void
     moveStartIndex: number
@@ -60,7 +59,8 @@ export default function AddressInput(props: AddressInputProps) {
                         obj.mainText,
                         obj.secondText,
                         hit.point,
-                        hit.extent ? hit.extent : getBBoxFromCoord(hit.point)
+                        hit.extent ? hit.extent : getBBoxFromCoord(hit.point),
+                        (hit as any).sarathiLocation
                     )
                 )
             })
@@ -85,6 +85,24 @@ export default function AddressInput(props: AddressInputProps) {
 
     // to focus the input after clear button we need:
     const searchInput = useRef<HTMLInputElement>(null)
+
+    // Handle URL query parameters on component mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryParam = urlParams.get('q');
+        
+        // If there are Sarathi API parameters, don't override with q parameter
+        const hasSarathiParams = urlParams.has('source_id') || urlParams.has('dest_id');
+        
+        if (queryParam && !props.point.isInitialized && !hasSarathiParams) {
+            setText(queryParam);
+            
+            // Trigger geocoding request
+            const lonlat = toLonLat(getMap().getView().getCenter()!)
+            const biasCoord = { lng: lonlat[0], lat: lonlat[1] }
+            geocoder.request(queryParam, biasCoord, getMap().getView().getZoom());
+        }
+    }, []);
 
     const onKeypress = useCallback(
         (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -135,13 +153,31 @@ export default function AddressInput(props: AddressInputProps) {
                                     if (result && result.hits.length > 0) {
                                         const hit: GeocodingHit = result.hits[0]
                                         const res = nominatimHitToItem(hit)
-                                        props.onAddressSelected(res.mainText + ', ' + res.secondText, hit.point)
+                                        // Avoid duplication in display text
+                                        const displayText = res.mainText + (res.secondText ? ', ' + res.secondText : '')
+                                        props.onAddressSelected(
+                                            displayText, 
+                                            hit.point, 
+                                            hit.sarathiLocation
+                                        )
                                     } else if (item instanceof GeocodingItem) {
-                                        props.onAddressSelected(item.toText(), item.point)
+                                        // Use clean display text without duplication
+                                        const displayText = formatDisplayText(item);
+                                        props.onAddressSelected(
+                                            displayText, 
+                                            item.point, 
+                                            item.sarathiLocation
+                                        )
                                     }
                                 })
                         } else if (item instanceof GeocodingItem) {
-                            props.onAddressSelected(item.toText(), item.point)
+                            // Use clean display text without duplication
+                            const displayText = formatDisplayText(item);
+                            props.onAddressSelected(
+                                displayText, 
+                                item.point, 
+                                item.sarathiLocation
+                            )
                         }
                     }
                     // do not disturb 'tab' cycle
@@ -151,6 +187,12 @@ export default function AddressInput(props: AddressInputProps) {
         },
         [autocompleteItems, highlightedResult]
     )
+
+    // Helper function to format display text without duplication
+    const formatDisplayText = (item: GeocodingItem): string => {
+        // Only show the main text (location name) without the country code or secondary information
+        return item.mainText;
+    };
 
     // the "fullscreen" css is only defined for smallscreen
     const containerClass = hasFocus ? styles.fullscreen : ''
@@ -193,26 +235,41 @@ export default function AddressInput(props: AddressInputProps) {
                     autoFocus={focusFirstInput}
                     ref={searchInput}
                     autoComplete="off"
+                    value={text}
                     onChange={e => {
-                        const query = e.target.value
-                        setText(query)
-                        const coordinate = textToCoordinate(query)
-                        if (!coordinate) geocoder.request(e.target.value, biasCoord, getMap().getView().getZoom())
-                        props.onChange(query)
+                        const query = e.target.value;
+                        setText(query);
+                        
+                        // Clear any previous autocomplete results if input is cleared
+                        if (query.trim() === '') {
+                            setAutocompleteItems([]);
+                            setOrigAutocompleteItems([]);
+                        }
+                        
+                        const coordinate = textToCoordinate(query);
+                        if (!coordinate) {
+                            geocoder.request(query, biasCoord, getMap().getView().getZoom());
+                        }
+                        props.onChange(query);
                     }}
                     onKeyDown={onKeypress}
                     onFocus={() => {
-                        setHasFocus(true)
-                        props.clearDragDrop()
-                        if (origAutocompleteItems.length > 0) setAutocompleteItems(origAutocompleteItems)
+                        setHasFocus(true);
+                        props.clearDragDrop();
+                        
+                        // Ensure the text field shows current query point text when focused
+                        setText(props.point.queryText);
+                        
+                        if (origAutocompleteItems.length > 0) {
+                            setAutocompleteItems(origAutocompleteItems);
+                        }
                     }}
                     onBlur={() => {
-                        setHasFocus(false)
-                        geocoder.cancel()
-                        setOrigAutocompleteItems(autocompleteItems)
-                        setAutocompleteItems([])
+                        setHasFocus(false);
+                        geocoder.cancel();
+                        setOrigAutocompleteItems(autocompleteItems);
+                        setAutocompleteItems([]);
                     }}
-                    value={text}
                     placeholder={tr(
                         type == QueryPointType.From ? 'from_hint' : type == QueryPointType.To ? 'to_hint' : 'via_hint'
                     )}
@@ -235,22 +292,6 @@ export default function AddressInput(props: AddressInputProps) {
                     <Cross />
                 </PlainButton>
 
-                <PlainButton
-                    tabIndex={-1}
-                    style={text.length == 0 && hasFocus ? {} : { display: 'none' }}
-                    className={styles.btnCurrentLocation}
-                    onMouseDown={
-                        e => e.preventDefault() // prevents that input->onBlur is called when clicking the button (would hide this button and prevent onClick)
-                    }
-                    onClick={() => {
-                        onCurrentLocationSelected(props.onAddressSelected)
-                        // but when clicked => we want to lose the focus e.g. to close mobile-input view
-                        searchInput.current!.blur()
-                    }}
-                >
-                    <CurrentLocationIcon />
-                </PlainButton>
-
                 {autocompleteItems.length > 0 && (
                     <ResponsiveAutocomplete
                         inputRef={searchInputContainer.current!}
@@ -262,7 +303,9 @@ export default function AddressInput(props: AddressInputProps) {
                             highlightedItem={autocompleteItems[highlightedResult]}
                             onSelect={item => {
                                 if (item instanceof GeocodingItem) {
-                                    props.onAddressSelected(item.toText(), item.point)
+                                    // Use the formatDisplayText function to display just the name
+                                    const displayText = formatDisplayText(item);
+                                    props.onAddressSelected(displayText, item.point, item.sarathiLocation)
                                 } else if (item instanceof POIQueryItem) {
                                     handlePoiSearch(poiSearch, item.result, props.map)
                                     setText(item.result.text(item.result.poi))
@@ -325,6 +368,7 @@ class Geocoder {
     private readonly timeout = new Timout(200)
     private readonly api: Api
     private readonly onSuccess: (query: string, provider: string, hits: GeocodingHit[]) => void
+    private lastQuery: string = ""
 
     constructor(api: Api, onSuccess: (query: string, provider: string, hits: GeocodingHit[]) => void) {
         this.api = api
@@ -332,12 +376,23 @@ class Geocoder {
     }
 
     request(query: string, bias: Coordinate | undefined, zoom = 11) {
-        this.requestAsync(query, bias, zoom).then(() => {})
+        // Skip if the query is the same as the last one (prevents duplicate requests)
+        if (query === this.lastQuery) {
+            return;
+        }
+        
+        this.lastQuery = query;
+        this.requestAsync(query, bias, zoom).then(() => {}).catch(error => {
+            console.error("Geocoding request error:", error);
+        });
     }
 
     cancel() {
         // invalidates last request if there is one
-        this.getNextId()
+        this.timeout.cancel();
+        this.getNextId();
+        // Clear last query state to allow requerying the same term
+        this.lastQuery = "";
     }
 
     async requestAsync(query: string, bias: Coordinate | undefined, zoom: number) {
@@ -352,10 +407,18 @@ class Geocoder {
                 ? { point: coordinateToText(bias), location_bias_scale: '0.5', zoom: '' + (zoom + 1) }
                 : {}
             const result = await this.api.geocode(query, provider, options)
-            const hits = Geocoder.filterDuplicates(result.hits)
-            if (currentId === this.requestId) this.onSuccess(query, provider, hits)
+            
+            // Check if this response is for the most recent request
+            if (currentId === this.requestId && result && result.hits) {
+                const hits = Geocoder.filterDuplicates(result.hits)
+                this.onSuccess(query, provider, hits)
+            }
         } catch (reason) {
-            throw Error('Could not get geocoding results because: ' + reason)
+            console.error('Could not get geocoding results because: ' + reason)
+            // Still call onSuccess with empty hits to clear previous results
+            if (currentId === this.requestId) {
+                this.onSuccess(query, provider, []);
+            }
         }
     }
 

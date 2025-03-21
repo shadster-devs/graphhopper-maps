@@ -40,6 +40,11 @@ export function createSvg({ color, number, size = 0 }: MarkerProps) {
 
 // todo: for some weird reason the markers are not shown when the color is given in hex format #012345
 function hexToRgb(hex: string) {
+    // If the color is already in rgba format, return it as is
+    if (hex.startsWith('rgba(') || hex.startsWith('rgb(')) {
+        return hex;
+    }
+
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
     if (!result) throw new Error('invalid hex color: ' + hex)
     return `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`

@@ -52,6 +52,14 @@ export function metersToShortText(meters: number, showDistanceInMiles: boolean) 
 }
 
 export function hitToItem(hit: GeocodingHit) {
+    // For Sarathi API results, just use the name
+    if ((hit as any).sarathiLocation) {
+        return {
+            mainText: hit.name,
+            secondText: '',
+        };
+    }
+    
     const mainText =
         hit.street && hit.name.indexOf(hit.street) >= 0
             ? hit.street + (hit.housenumber ? ' ' + hit.housenumber : '')
@@ -63,6 +71,11 @@ export function hitToItem(hit: GeocodingHit) {
 }
 
 function toSecondText(hit: GeocodingHit, mainText: string) {
+    // For Sarathi API results, we don't need secondary text
+    if ((hit as any).sarathiLocation) {
+        return '';
+    }
+    
     let result =
         hit.street && mainText.indexOf(hit.street) < 0
             ? hit.street + (hit.housenumber ? ' ' + hit.housenumber : '') + ', '
@@ -81,6 +94,14 @@ function toCity(hit: GeocodingHit) {
 }
 
 export function nominatimHitToItem(hit: GeocodingHit) {
+    // For Sarathi API results, just use the name
+    if ((hit as any).sarathiLocation) {
+        return {
+            mainText: hit.name,
+            secondText: '',
+        };
+    }
+    
     const name = hit.name ? hit.name : hit.country
     const street = hit.street ? hit.street + (hit.housenumber ? ' ' + hit.housenumber : '') : ''
     const mainText = hit.street && name.indexOf(hit.street) == 0 ? street : name.split(',')[0]
@@ -112,4 +133,10 @@ export function textToCoordinate(text: string): Coordinate | null {
     }
 
     return isNaN(result.lng) || isNaN(result.lat) ? null : result
+}
+
+// Add the timeToText function that converts minutes to a human-readable format
+export function timeToText(minutes: number): string {
+    // Convert minutes to milliseconds for compatibility with existing function
+    return milliSecondsToText(minutes * 60 * 1000);
 }

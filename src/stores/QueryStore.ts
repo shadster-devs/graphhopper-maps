@@ -43,6 +43,14 @@ export interface QueryStoreState {
     readonly customModelStr: string
 }
 
+export interface SarathiLocation {
+    id: string
+    sid: number
+    type: number
+    name?: string
+    cc?: string
+}
+
 export interface QueryPoint {
     readonly coordinate: Coordinate
     readonly queryText: string
@@ -50,6 +58,7 @@ export interface QueryPoint {
     readonly color: string
     readonly id: number
     readonly type: QueryPointType
+    readonly sarathiLocation?: SarathiLocation
 }
 
 export interface CustomModel {
@@ -448,12 +457,19 @@ export default class QueryStore extends Store<QueryStoreState> {
                 customModel = JSON.parse(state.customModelStr)
             } catch {}
 
+        // Extract Sarathi location data from the first and last query points if available
+        const fromPoint = state.queryPoints[0];
+        const toPoint = state.queryPoints[state.queryPoints.length - 1];
+        
+        // Build the complete request object with all fields at once to handle readonly properties
         return {
             points: coordinates,
             profile: state.routingProfile.name,
             maxAlternativeRoutes: state.maxAlternativeRoutes,
             customModel: customModel,
-        }
+            sarathiSourceLocation: fromPoint?.sarathiLocation,
+            sarathiDestLocation: toPoint?.sarathiLocation
+        };
     }
 
     private static getEmptyPoint(id: number, type: QueryPointType): QueryPoint {

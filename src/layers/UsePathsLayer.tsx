@@ -21,6 +21,7 @@ import { getTransportModeColor, getTransportModeDash, getTransportModeWidth } fr
 import { PathDisplayMode } from '@/stores/SettingsStore'
 import { SettingsContext } from '@/contexts/SettingsContext'
 import { Icon } from 'ol/style'
+import { createSvg } from '@/layers/createMarkerSVG'
 
 const pathsLayerKey = 'pathsLayer'
 const selectedPathLayerKey = 'selectedPathLayer'
@@ -31,13 +32,22 @@ export default function usePathsLayer(map: Map, paths: SegmentedPath[], selected
     
     useEffect(() => {
         removeCurrentPathLayers(map)
-        addUnselectedPathsLayer(
-            map,
-            paths.filter(p => p != selectedPath),
-            settings.pathDisplayMode
-        )
-        addSelectedPathsLayer(map, selectedPath, settings.pathDisplayMode)
-        addAccessNetworkLayer(map, selectedPath, queryPoints)
+        
+        // Don't show unselected paths at all - only show the selected path
+        // if (selectedPath && selectedPath.segments && selectedPath.segments.length > 0) {
+        //     addUnselectedPathsLayer(
+        //         map,
+        //         paths.filter(p => p != selectedPath),
+        //         settings.pathDisplayMode
+        //     )
+        // }
+        
+        // Always show selected path if available
+        if (selectedPath && selectedPath.segments && selectedPath.segments.length > 0) {
+            addSelectedPathsLayer(map, selectedPath, settings.pathDisplayMode)
+            addAccessNetworkLayer(map, selectedPath, queryPoints)
+        }
+        
         return () => {
             removeCurrentPathLayers(map)
         }
@@ -54,42 +64,29 @@ function removeCurrentPathLayers(map: Map) {
 /**
  * Get style for a specific transport mode
  */
-function getStyleForMode(mode: string, isSelected: boolean = false, isAlternative: boolean = false, displayMode: PathDisplayMode = PathDisplayMode.Dynamic): Style[] {
-    const styles: Style[] = [];
-    
-    // Get width from centralized constants
-    const width = getTransportModeWidth(mode, isSelected);
-    // Outer stroke is slightly wider than the main line
-    const outerWidth = width * 1.25;
-    
-    // Common style (outer stroke)
-    styles.push(new Style({
-        stroke: new Stroke({
-            color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(39,93,173,0.8)',
-            width: outerWidth,
-        }),
-    }));
-    
-    // Get color and line dash from centralized constants
+function getStyleForMode(mode: string, isSelected: boolean = false): Style {
     const color = getTransportModeColor(mode, isSelected);
-    const lineDash = getTransportModeDash(mode);
+    const width = getTransportModeWidth(mode, isSelected);
+    const dashPattern = getTransportModeDash(mode);
     
-    // Create the main line style
-    const mainStyle = new Style({
+    return new Style({
         stroke: new Stroke({
             color: color,
             width: width,
-            lineDash: lineDash,
-        }),
+            lineDash: dashPattern,
+            lineCap: 'round',
+            lineJoin: 'round'
+        })
     });
-    
-    styles.push(mainStyle);
-    
-    return styles;
 }
 
 // Function to create a path with directional arrows
 function addDirectionalPathFeature(source: VectorSource, segment: Segment, isSelected: boolean = false) {
+    // Only proceed if segment.points exists
+    if (!segment.points || !segment.points.coordinates) {
+        return;
+    }
+    
     // Create the main line feature
     const feature = new Feature();
     const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
@@ -101,31 +98,8 @@ function addDirectionalPathFeature(source: VectorSource, segment: Segment, isSel
     // Add to vector source
     source.addFeature(feature);
     
-    // If we have at least 2 coordinates, add arrow features at regular intervals
-    if (coordinates.length >= 2) {
-        // Determine how many arrows to place
-        const totalPathLength = coordinates.reduce((acc, curr, idx) => {
-            if (idx === 0) return 0;
-            return acc + distance(coordinates[idx-1], curr);
-        }, 0);
-        
-        // We'll place an arrow roughly every 100 pixels
-        const arrowCount = Math.max(1, Math.floor(totalPathLength / 100));
-        const stepSize = 1 / arrowCount;
-        
-        // Create arrow features along the path
-        for (let step = stepSize; step < 1; step += stepSize) {
-            // Find the position at this percentage along the line
-            const position = calculateIntermediatePointOnPath(coordinates, step);
-            
-            // Calculate direction at this point (use the closest segment)
-            const direction = calculateDirectionAtPoint(coordinates, step);
-            
-            // Create an arrow feature
-            const arrowFeature = createArrowFeature(position, direction, segment.mode, isSelected);
-            source.addFeature(arrowFeature);
-        }
-    }
+    // Remove arrow features as they appear as black elements on the map
+    // If we want to add directional indicators later, we can implement a better approach
 }
 
 // Helper to calculate a point at a specific percentage along a path
@@ -232,6 +206,11 @@ function createArrowFeature(position: number[], direction: number, mode: string,
 }
 
 function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: PathDisplayMode) {
+    // Only create the layer if there are paths to display
+    if (!paths || paths.length === 0) {
+        return;
+    }
+    
     const layer = new VectorLayer({
         source: new VectorSource(),
         opacity: 0.7,
@@ -240,7 +219,14 @@ function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: 
     
     // Add each path's segments as separate features
     paths.forEach((path, pathIndex) => {
+        if (!path.segments) return;
+        
         path.segments.forEach((segment, segmentIndex) => {
+            // Skip segments without valid points
+            if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+                return;
+            }
+            
             const feature = new Feature({
                 pathIndex: pathIndex,
                 segmentIndex: segmentIndex,
@@ -249,12 +235,10 @@ function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: 
             const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
             feature.setGeometry(new LineString(coordinates));
             
-            // Apply mode-specific style
-            feature.setStyle(getStyleForMode(segment.mode, false, true));
+            // Apply mode-specific style (not selected, so isSelected = false)
+            feature.setStyle(getStyleForMode(segment.mode, false));
             
             layer.getSource()?.addFeature(feature);
-            
-            // Remove arrow functionality for static mode - no longer needed
         });
     });
     
@@ -270,8 +254,10 @@ function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: 
         hitTolerance: 5,
     });
     select.on('select', (e: SelectEvent) => {
-        const pathIndex = e.selected[0].getProperties().pathIndex;
-        Dispatcher.dispatch(new SetSelectedPath(paths[pathIndex] as any));
+        if (e.selected && e.selected.length > 0) {
+            const pathIndex = e.selected[0].getProperties().pathIndex;
+            Dispatcher.dispatch(new SetSelectedPath(paths[pathIndex] as any));
+        }
     });
     select.set('gh:select_path_interaction', true);
     map.addInteraction(select);
@@ -319,55 +305,95 @@ function addAccessNetworkLayer(map: Map, selectedPath: SegmentedPath, queryPoint
     })
     layer.setStyle(style)
     
-    // Get all unique waypoints from the path segments
-    const waypoints: [number, number, number][] = [];
+    // Get source and destination points from the first and last segments
+    const waypoints: number[][] = [];
     
     if (selectedPath.segments && selectedPath.segments.length > 0) {
-        // Add the first "from" point of the first segment
-        waypoints.push(selectedPath.segments[0].from);
+        // Get first segment source coordinates
+        const firstSegment = selectedPath.segments[0];
+        if (firstSegment.source && firstSegment.source.geo) {
+            waypoints.push([firstSegment.source.geo.lng, firstSegment.source.geo.lat, 0]);
+        }
         
-        // Add the "to" point of each segment
-        selectedPath.segments.forEach(segment => {
-            waypoints.push(segment.to);
-        });
+        // Get last segment destination coordinates
+        const lastSegment = selectedPath.segments[selectedPath.segments.length - 1];
+        if (lastSegment.destination && lastSegment.destination.geo) {
+            waypoints.push([lastSegment.destination.geo.lng, lastSegment.destination.geo.lat, 0]);
+        }
     }
     
     // Draw access lines to query points
     for (let i = 0; i < Math.min(waypoints.length, queryPoints.length); i++) {
-        if (queryPoints[i] && queryPoints[i].isInitialized) {
-            const start = fromLonLat([queryPoints[i].coordinate.lng, queryPoints[i].coordinate.lat])
-            const end = fromLonLat(waypoints[i])
-            layer.getSource()?.addFeature(new Feature(createBezierLineString(start, end)))
+        if (queryPoints[i] && queryPoints[i].isInitialized && waypoints[i]) {
+            const start = fromLonLat([queryPoints[i].coordinate.lng, queryPoints[i].coordinate.lat]);
+            const end = fromLonLat(waypoints[i]);
+            layer.getSource()?.addFeature(new Feature(createBezierLineString(start, end)));
         }
     }
     
-    layer.set(accessNetworkLayerKey, true)
-    layer.setZIndex(1)
-    map.addLayer(layer)
+    layer.set(accessNetworkLayerKey, true);
+    layer.setZIndex(1);
+    map.addLayer(layer);
 }
 
 function addSelectedPathsLayer(map: Map, selectedPath: SegmentedPath, displayMode: PathDisplayMode) {
+    // Only create the layer if there is a valid path to display
+    if (!selectedPath || !selectedPath.segments || selectedPath.segments.length === 0) {
+        return;
+    }
+    
     const layer = new VectorLayer({
         source: new VectorSource(),
-        opacity: 0.8,
-        zIndex: 2,
+        opacity: 1.0, // Full opacity for selected path
+        zIndex: 2,    // Higher z-index to show on top
     });
     
     // Add each segment as a separate feature with its own style
-    if (selectedPath.segments) {
-        selectedPath.segments.forEach(segment => {
-            const feature = new Feature();
-            const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
-            feature.setGeometry(new LineString(coordinates));
+    selectedPath.segments.forEach((segment, segmentIndex) => {
+        // Skip segments without valid points
+        if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+            return;
+        }
+        
+        const feature = new Feature();
+        const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
+        feature.setGeometry(new LineString(coordinates));
+        
+        // Apply mode-specific style for selected path
+        feature.setStyle(getStyleForMode(segment.mode, true));
+        
+        layer.getSource()?.addFeature(feature);
+        
+        // Add stop markers at the end of the segment (except for the last segment)
+        if (segmentIndex < selectedPath.segments.length - 1) {
+            const endPoint = coordinates[coordinates.length - 1];
             
-            // Apply mode-specific style for selected path
-            feature.setStyle(getStyleForMode(segment.mode, true));
+            // Create a marker at the end point of the segment
+            const stopMarker = new Feature({
+                geometry: new Point(endPoint)
+            });
             
-            layer.getSource()?.addFeature(feature);
+            // Get the solid icon color from the transport modes instead of the selected rgba color
+            // This avoids issues with rgba colors in the marker SVG
+            const normalizedMode = segment.mode?.toUpperCase() || 'default';
+            let markerColor = '#ADD8E6'; // light blue
             
-            // Removed arrows in static mode as requested
-        });
-    }
+            // Create a stop marker style
+            stopMarker.setStyle(new Style({
+                image: new Icon({
+                    src: 'data:image/svg+xml;utf8,' + createSvg({
+                        color: markerColor,
+                        size: 24
+                    }),
+                    anchor: [0.5, 1], // Anchor point at the bottom center of the marker
+                    scale: 1.5
+                })
+            }));
+            
+            // Add the marker to the layer
+            layer.getSource()?.addFeature(stopMarker);
+        }
+    });
     
     layer.set(selectedPathLayerKey, true);
     map.addLayer(layer);

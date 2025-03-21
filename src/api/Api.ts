@@ -19,15 +19,18 @@ import { getTranslation, tr } from '@/translation/Translation'
 import * as config from 'config'
 import { Coordinate } from '@/stores/QueryStore'
 import { POIQuery } from '@/pois/AddressParseResult'
+import { SegmentedRoutingResult } from './sarathi'
 
 interface ApiProfile {
     name: string
 }
 
+let api: Api | null = null
+
 export default interface Api {
     info(): Promise<ApiInfo>
 
-    route(args: RoutingArgs): Promise<RoutingResult>
+    route(args: RoutingArgs): Promise<SegmentedRoutingResult>
 
     routeWithDispatch(args: RoutingArgs, zoom: boolean): void
 
@@ -36,9 +39,9 @@ export default interface Api {
     reverseGeocode(query: POIQuery, bbox: Bbox): Promise<ReverseGeocodingHit[]>
 
     supportsGeocoding(): boolean
+    
+    locationSearch(query: string): Promise<any>
 }
-
-let api: Api | undefined
 
 export function setApi(routingApi: string, geocodingApi: string, apiKey: string) {
     api = new ApiImpl(routingApi, geocodingApi, apiKey)
@@ -50,20 +53,23 @@ export function getApi() {
 }
 
 /**
- * Exporting this so that it can be tested directly. Don't know how to properly set this up in typescript, so that the
- * class could be tested but is not available for usage in the app. In Java one would make this package private I guess.
+ * Implementation of the Api interface.
  */
 export class ApiImpl implements Api {
     private readonly apiKey: string
     private readonly routingApi: string
+    private readonly sarathiRoutesApi: string
+    private readonly sarathiSearchApi: string
     private readonly geocodingApi: string
     private routeCounter = 0
     private lastRouteNumber = -1
 
     constructor(routingApi: string, geocodingApi: string, apiKey: string) {
-        this.apiKey = apiKey
         this.routingApi = routingApi
         this.geocodingApi = geocodingApi
+        this.apiKey = apiKey
+        this.sarathiRoutesApi = 'http://10.212.32.230:50060/routeplanner/routes' 
+        this.sarathiSearchApi = 'http://10.212.32.230:50091/routeplanner/location/search'
     }
 
     async info(): Promise<ApiInfo> {
@@ -89,36 +95,64 @@ export class ApiImpl implements Api {
         provider: string,
         additionalOptions?: Record<string, string>
     ): Promise<GeocodingResult> {
-        if (!this.supportsGeocoding())
+        try {
+            // Skip empty queries
+            if (!query || query.trim() === '') {
+                return { hits: [], took: 0 };
+            }
+            
+            // Call Sarathi location search API
+            const sarathiResult = await this.locationSearch(query);
+            
+            if (!sarathiResult.success || !sarathiResult.data || sarathiResult.data.length === 0) {
+                console.log('No results from Sarathi search API');
+                return { hits: [], took: 0 };
+            }
+            
+            // Convert Sarathi search results to GraphHopper GeocodingResult format
+            const hits = sarathiResult.data.map((location: any) => {
+                // Ensure we have valid coordinates
+                const lat = location.geo?.lat || 0;
+                const lng = location.geo?.lng || 0;
+                
+                return {
+                    point: {
+                        lat: lat,
+                        lng: lng
+                    },
+                    extent: [lng - 0.05, lat - 0.05, lng + 0.05, lat + 0.05], // Create a reasonable bbox
+                    osm_id: location.id,
+                    osm_type: 'N',
+                    osm_value: 'city',
+                    name: location.name,
+                    country: location.cc,
+                    city: location.name,
+                    state: '',
+                    street: '',
+                    housenumber: '',
+                    postcode: '',
+                    osm_key: 'place',
+                    point_id: location.sid.toString(),
+                    // Store the original Sarathi location data for later use
+                    sarathiLocation: {
+                        id: location.id,
+                        sid: location.sid,
+                        type: location.type,
+                        name: location.name,
+                        cc: location.cc,
+                        geo: location.geo // Store geo coordinates in sarathiLocation as well
+                    }
+                };
+            });
+            
             return {
-                hits: [],
-                took: 0,
-            }
-        const url = this.getGeocodingURLWithKey('geocode')
-        url.searchParams.append('q', query)
-        url.searchParams.append('provider', provider)
-        const langAndCountry = getTranslation().getLang().split('_')
-        url.searchParams.append('locale', langAndCountry.length > 0 ? langAndCountry[0] : 'en')
-
-        // routing makes not much sense between areas and it is unclear if the center is on a road
-        url.searchParams.append('osm_tag', '!place:county')
-        url.searchParams.append('osm_tag', '!boundary')
-        url.searchParams.append('osm_tag', '!historic')
-
-        if (additionalOptions) {
-            for (const key in additionalOptions) {
-                url.searchParams.append(key, additionalOptions[key])
-            }
-        }
-
-        const response = await fetch(url.toString(), {
-            headers: { Accept: 'application/json' },
-        })
-
-        if (response.ok) {
-            return (await response.json()) as GeocodingResult
-        } else {
-            throw new Error('Geocoding went wrong ' + response.status)
+                hits: hits,
+                took: 0
+            };
+        } catch (error) {
+            console.error('Error in geocode using Sarathi API:', error);
+            // Return empty result on error
+            return { hits: [], took: 0 };
         }
     }
 
@@ -189,72 +223,108 @@ export class ApiImpl implements Api {
         return this.geocodingApi !== ''
     }
 
-    async route(args: RoutingArgs): Promise<RoutingResult> {
-        const completeRequest = ApiImpl.createRequest(args)
-
-        const response = await fetch(this.getRoutingURLWithKey('route').toString(), {
-            method: 'POST',
-            mode: 'cors',
-            body: JSON.stringify(completeRequest),
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-
-        if (response.ok) {
-            // parse from json
-            const rawResult = (await response.json()) as RawResult
-
-            // transform encoded points into decoded
-            return {
-                ...rawResult,
-                paths: ApiImpl.decodeResult(rawResult, completeRequest.elevation),
+    async route(args: RoutingArgs): Promise<SegmentedRoutingResult> {
+        try {
+            // Check if args has sarathiLocation data attached
+            if (!args.sarathiSourceLocation || !args.sarathiDestLocation) {
+                throw new Error('Source or destination location data is missing. Please select locations from the search results.');
             }
-        } else if (response.status === 500) {
-            // not always true, but most of the time :)
-            throw new Error(tr('route_timed_out'))
-        } else if (response.status === 400) {
-            const errorResult = (await response.json()) as ErrorResponse
-            let message = errorResult.message
-            if (errorResult.hints && errorResult.hints.length > 0) {
-                let messagesFromHints = ''
-                errorResult.hints.forEach(hint => {
-                    if (!hint.message.includes(message)) {
-                        messagesFromHints += (messagesFromHints ? ' and ' : '') + messagesFromHints
-                        messagesFromHints += hint.message
+            
+            // Use the provided sarathiLocation data for source and destination
+            const sourceId = args.sarathiSourceLocation.id;
+            const sourceSid = args.sarathiSourceLocation.sid;
+            const destId = args.sarathiDestLocation.id;
+            const destSid = args.sarathiDestLocation.sid;
+            
+            // Call the Sarathi routes API with the appropriate source/destination
+            const response = await fetch(this.sarathiRoutesApi, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    'variant': 'dweb'
+                },
+                body: JSON.stringify({
+                    source: {
+                        id: sourceId,
+                        sid: sourceSid,
+                        type: 1
+                    },
+                    destination: {
+                        id: destId,
+                        sid: destSid,
+                        type: 1
                     }
                 })
-                if (messagesFromHints) message += (message ? ' and ' : '') + messagesFromHints
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Sarathi API error: ${response.status} ${response.statusText}`);
             }
-            throw new Error(message)
-        } else {
-            throw new Error(tr('route_request_failed'))
+            
+            const result = await response.json() as SegmentedRoutingResult;
+            
+            // Process the result to ensure the points field is set for each segment
+            if (result.success && result.data && result.data.routes) {
+                result.data.routes.forEach(route => {
+                    route.segments.forEach(segment => {
+                        // If no points are provided, create a line between source and destination
+                        if (!segment.points && segment.source.geo && segment.destination.geo) {
+                            // Create a LineString with enough points for proper icon placement
+                            // For simplicity, we'll create 5 points along a straight line between source and destination
+                            const srcLng = segment.source.geo.lng;
+                            const srcLat = segment.source.geo.lat;
+                            const destLng = segment.destination.geo.lng;
+                            const destLat = segment.destination.geo.lat;
+                            
+                            // Calculate intermediate points
+                            const coordinates = [];
+                            const numPoints = 5;
+                            
+                            for (let i = 0; i < numPoints; i++) {
+                                const ratio = i / (numPoints - 1);
+                                const lng = srcLng + ratio * (destLng - srcLng);
+                                const lat = srcLat + ratio * (destLat - srcLat);
+                                coordinates.push([lng, lat, 0]);
+                            }
+                            
+                            segment.points = {
+                                type: 'LineString',
+                                coordinates: coordinates
+                            } as LineString;
+                        }
+                    });
+                });
+            }
+            
+            return result;
+        } catch (error) {
+            console.error("Error calling Sarathi API:", error);
+            throw error;
         }
     }
 
     routeWithDispatch(args: RoutingArgs, zoomOnSuccess: boolean) {
-        const routeNumber = this.routeCounter++
+        const routeNumber = this.routeCounter++;
         this.route(args)
             .then(result => {
                 if (routeNumber > this.lastRouteNumber) {
-                    this.lastRouteNumber = routeNumber
-                    Dispatcher.dispatch(new RouteRequestSuccess(args, zoomOnSuccess, result))
+                    this.lastRouteNumber = routeNumber;
+                    Dispatcher.dispatch(new RouteRequestSuccess(args, zoomOnSuccess, result));
                 } else {
-                    const tmp = JSON.stringify(args) + ' ' + routeNumber + ' <= ' + this.lastRouteNumber
-                    console.log('Ignore response of earlier started route ' + tmp)
+                    const tmp = JSON.stringify(args) + ' ' + routeNumber + ' <= ' + this.lastRouteNumber;
+                    console.log('Ignore response of earlier started route ' + tmp);
                 }
             })
             .catch(error => {
                 if (routeNumber > this.lastRouteNumber) {
-                    console.warn('error when performing /route request ' + routeNumber + ': ', error)
-                    this.lastRouteNumber = routeNumber
-                    Dispatcher.dispatch(new RouteRequestFailed(args, error.message))
+                    console.warn('error when performing route request ' + routeNumber + ': ', error);
+                    this.lastRouteNumber = routeNumber;
+                    Dispatcher.dispatch(new RouteRequestFailed(args, error.message));
                 } else {
-                    const tmp = JSON.stringify(args) + ' ' + routeNumber + ' <= ' + this.lastRouteNumber
-                    console.log('Ignore error ' + error.message + ' of earlier started route ' + tmp)
+                    const tmp = JSON.stringify(args) + ' ' + routeNumber + ' <= ' + this.lastRouteNumber;
+                    console.log('Ignore error ' + error.message + ' of earlier started route ' + tmp);
                 }
-            })
+            });
     }
 
     private getRoutingURLWithKey(endpoint: string) {
@@ -462,5 +532,33 @@ export class ApiImpl implements Api {
 
         // return null if the bbox is not valid, e.g. if no url points were given at all
         return bbox[0] < bbox[2] && bbox[1] < bbox[3] ? bbox : null
+    }
+
+    /**
+     * Search for locations using the Sarathi API
+     */
+    async locationSearch(query: string): Promise<any> {
+        try {
+            const url = new URL(this.sarathiSearchApi);
+            url.searchParams.append('q', query);
+            
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'accept': '*/*',
+                    'content-type': 'application/json',
+                    'variant': 'dweb'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Sarathi search API error: ${response.status} ${response.statusText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error("Error calling Sarathi search API:", error);
+            throw error;
+        }
     }
 }

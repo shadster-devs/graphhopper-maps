@@ -3,7 +3,7 @@ import Dispatcher from '@/stores/Dispatcher'
 import { ClearPoints, SelectMapLayer, SetBBox, SetQueryPoints, SetVehicleProfile, UpdateSettings } from '@/actions/Actions'
 // import the window like this so that it can be mocked during testing
 import { window } from '@/Window'
-import QueryStore, { getBBoxFromCoord, QueryPoint, QueryPointType, QueryStoreState } from '@/stores/QueryStore'
+import QueryStore, { getBBoxFromCoord, QueryPoint, QueryPointType, QueryStoreState, SarathiLocation } from '@/stores/QueryStore'
 import MapOptionsStore, { MapOptionsStoreState } from './stores/MapOptionsStore'
 import { ApiImpl, getApi } from '@/api/Api'
 import { AddressParseResult } from '@/pois/AddressParseResult'
@@ -47,6 +47,22 @@ export default class NavBar {
         if (settings.pathDisplayMode !== PathDisplayMode.Dynamic) {
             result.searchParams.append('pathDisplayMode', settings.pathDisplayMode);
         }
+        
+        // Add Sarathi location IDs to the URL if available
+        const fromPoint = queryStoreState.queryPoints.find(p => p.type === QueryPointType.From);
+        const toPoint = queryStoreState.queryPoints.find(p => p.type === QueryPointType.To);
+        
+        if (fromPoint?.sarathiLocation) {
+            result.searchParams.append('source_id', fromPoint.sarathiLocation.id);
+            result.searchParams.append('source_sid', fromPoint.sarathiLocation.sid.toString());
+            result.searchParams.append('source_type', fromPoint.sarathiLocation.type.toString());
+        }
+        
+        if (toPoint?.sarathiLocation) {
+            result.searchParams.append('dest_id', toPoint.sarathiLocation.id);
+            result.searchParams.append('dest_sid', toPoint.sarathiLocation.sid.toString());
+            result.searchParams.append('dest_type', toPoint.sarathiLocation.type.toString());
+        }
 
         return result
     }
@@ -57,28 +73,85 @@ export default class NavBar {
     }
 
     private static parsePoints(url: URL): QueryPoint[] {
-        return url.searchParams.getAll('point').map((parameter, idx) => {
+        // Get points from 'point' parameter
+        const points = url.searchParams.getAll('point').map((parameter, idx) => {
             const split = parameter.split('_')
 
-            const point = {
-                coordinate: { lat: 0, lng: 0 },
-                isInitialized: false,
-                id: idx,
-                queryText: parameter,
-                color: '',
-                type: QueryPointType.Via,
-            }
-            if (split.length >= 1)
+            let coordinate = { lat: 0, lng: 0 };
+            let queryText = parameter;
+            let isInitialized = false;
+            
+            if (split.length >= 1) {
                 try {
-                    point.coordinate = NavBar.parseCoordinate(split[0])
-                    if (!Number.isNaN(point.coordinate.lat) && !Number.isNaN(point.coordinate.lng)) {
-                        point.queryText = split.length >= 2 ? split[1] : coordinateToText(point.coordinate)
-                        point.isInitialized = true
+                    coordinate = NavBar.parseCoordinate(split[0]);
+                    if (!Number.isNaN(coordinate.lat) && !Number.isNaN(coordinate.lng)) {
+                        queryText = split.length >= 2 ? split[1] : coordinateToText(coordinate);
+                        isInitialized = true;
                     }
                 } catch (e) {}
+            }
 
-            return point
-        })
+            // Create immutable QueryPoint object
+            const point: QueryPoint = {
+                coordinate,
+                queryText,
+                isInitialized,
+                id: idx,
+                color: '',
+                type: QueryPointType.Via
+            };
+
+            return point;
+        });
+        
+        // Handle new Sarathi API parameters if provided
+        let updatedPoints = [...points];
+        
+        if (points.length >= 2) {
+            // Source location data
+            const sourceId = url.searchParams.get('source_id');
+            const sourceSid = url.searchParams.get('source_sid');
+            const sourceType = url.searchParams.get('source_type') || '1';
+            
+            // Destination location data
+            const destId = url.searchParams.get('dest_id');
+            const destSid = url.searchParams.get('dest_sid');
+            const destType = url.searchParams.get('dest_type') || '1';
+            
+            // Add Sarathi location data to source point if available
+            if (sourceId && sourceSid) {
+                const sourceLocation: SarathiLocation = {
+                    id: sourceId,
+                    sid: parseInt(sourceSid),
+                    type: parseInt(sourceType),
+                    name: points[0].queryText
+                };
+                
+                // Create a new point object with sarathiLocation
+                updatedPoints[0] = {
+                    ...points[0],
+                    sarathiLocation: sourceLocation
+                };
+            }
+            
+            // Add Sarathi location data to destination point if available
+            if (destId && destSid) {
+                const destLocation: SarathiLocation = {
+                    id: destId,
+                    sid: parseInt(destSid),
+                    type: parseInt(destType),
+                    name: points[1].queryText
+                };
+                
+                // Create a new point object with sarathiLocation
+                updatedPoints[1] = {
+                    ...points[1],
+                    sarathiLocation: destLocation
+                };
+            }
+        }
+        
+        return updatedPoints;
     }
 
     private static parseCoordinate(params: string) {
