@@ -6,27 +6,31 @@
 // Mode colors - define selected and unselected versions for each mode
 export const TRANSPORT_MODE_COLORS = {
     flight: {
-        selected: 'rgba(255,99,71)',
-        normal: 'rgba(255,99,71,0.7)'
+        selected: '#9400FF',     // Neon Violet
+        normal: '#9400FF99'      // Semi-transparent Neon Violet
     },
     train: {
-        selected: 'rgba(30,144,255)',
-        normal: 'rgba(30,144,255,0.7)'
+        selected: '#FF6EC7',     // Neon Pink
+        normal: '#FF6EC799'      // Semi-transparent Neon Pink
     },
     bus: {
-        selected: 'rgba(50,205,50)',
-        normal: 'rgba(50,205,50,0.7)'
+        selected: '#FF8800',     // Neon Orange
+        normal: '#FF880099'      // Semi-transparent Neon Orange
     },
     cab: {
-        selected: 'rgb(255, 225, 0)',
-        normal: 'rgb(242, 255, 0)'
+        selected: '#00FFFF',     // Neon Cyan
+        normal: '#00FFFF99'      // Semi-transparent Neon Cyan
     },
     // Default color for fallback
     default: {
-        selected: 'rgba(39,100,200)',
-        normal: 'rgba(201,217,241,0.7)'
+        selected: '#FF44CC',     // Neon Purple-Pink
+        normal: '#FF44CC99'      // Semi-transparent Neon Purple-Pink
     }
 };
+
+
+
+
 
 // Line widths for each mode (base width - will be adjusted for selected state)
 export const TRANSPORT_MODE_WIDTHS = {
