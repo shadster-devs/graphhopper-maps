@@ -21,7 +21,7 @@ export function createMap(): Map {
             zoomOptions: {
                 className: styles.customZoom,
             },
-            attribution: true,
+            attribution: false,
             attributionOptions: {
                 className: styles.customAttribution,
                 collapsible: false,

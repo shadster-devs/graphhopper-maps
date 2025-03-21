@@ -138,7 +138,7 @@ function RoutingResult({
                         {priceDisplay && (
                             <span className={styles.resultPriceText}>
                                 {priceDisplay}
-                            </span>
+                                </span>
                         )}
                         
                         {/* Display route tags if available - below the price */}
@@ -151,7 +151,7 @@ function RoutingResult({
                                         style={{ backgroundColor: getToneColor(tag.tone) }}
                                     >
                                         {tag.content}
-                                    </span>
+                                </span>
                                 ))}
                             </div>
                         )}
@@ -168,8 +168,8 @@ function RoutingResult({
                                         <div className={`${styles.cityPoint} ${index === 0 ? styles.origin : index === locationNames.length - 1 ? styles.destination : ''}`}></div>
                                         <div className={styles.cityName} title={location}>
                                             {location}
-                                        </div>
-                                    </div>
+                    </div>
+                </div>
                                 ))}
                                 
                                 {/* Transport mode icons between cities */}
@@ -185,7 +185,7 @@ function RoutingResult({
                                         {getTransportIcon(mode)}
                                     </div>
                                 ))}
-                            </div>
+            </div>
                         )}
                     </div>
                     
@@ -197,7 +197,7 @@ function RoutingResult({
                         </div>
                     )}
                 </div>
-            </div>
+                </div>
         </div>
     )
 }
