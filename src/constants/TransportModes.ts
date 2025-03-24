@@ -6,25 +6,25 @@
 // Mode colors - define selected and unselected versions for each mode
 export const TRANSPORT_MODE_COLORS = {
     FLIGHTS: {
-        icon: '#9400FF',     // Neon Violet
-        selected: 'rgba(148, 0, 255, 0.7)'  // Semi-transparent Neon Violet
+        icon: '#3C82F6',     // Blue
+        selected: 'rgba(60, 130, 246, 0.5)'  // Semi-transparent Blue
     },
     RAILS: {
-        icon: '#FF6EC7',     // Neon Pink
-        selected: 'rgba(255, 110, 199, 0.7)'  // Semi-transparent Neon Pink
+        icon: '#10B981',     // Green
+        selected: 'rgba(16, 185, 129, 0.5)'  // Semi-transparent Green
     },
     BUS: {
-        icon: '#FF8800',     // Neon Orange
-        selected: 'rgba(255, 136, 0, 0.7)'  // Semi-transparent Neon Orange
+        icon: '#F59E0B',     // Amber
+        selected: 'rgba(245, 158, 11, 0.5)'  // Semi-transparent Amber
     },
     CAB: {
-        icon: '#00FFFF',     // Neon Cyan
-        selected: 'rgba(0, 255, 255, 0.7)'  // Semi-transparent Neon Cyan
+        icon: '#EC4899',     // Pink
+        selected: 'rgba(236, 72, 153, 0.5)'  // Semi-transparent Pink
     },
     // Default color for fallback
     default: {
-        icon: '#FF44CC',     // Neon Purple-Pink
-        selected: 'rgba(255, 68, 204, 0.7)'  // Semi-transparent Neon Purple-Pink
+        icon: '#6366F1',     // Indigo
+        selected: 'rgba(99, 102, 241, 0.5)'  // Semi-transparent Indigo
     }
 };
 

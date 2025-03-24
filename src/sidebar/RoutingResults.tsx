@@ -26,7 +26,9 @@ export default function RoutingResults(props: RoutingResultsProps) {
     const isShortScreen = useMediaQuery({
         query: '(max-height: 45rem) and (orientation: landscape), (max-height: 70rem) and (orientation: portrait)',
     })
-    return <ul style={{ padding: 0, margin: 0 }}>{isShortScreen ? createSingletonListContent(props) : createListContent(props)}</ul>
+    return (
+        <ul style={{ padding: 0, margin: 0 }}>{isShortScreen ? createSingletonListContent(props) : createListContent(props)}</ul>
+    )
 }
 
 function RoutingResult({
@@ -125,23 +127,44 @@ function RoutingResult({
     };
     
     const priceDisplay = getPriceWithSymbol();
+    
+    // Get route name - either from summary or construct from segment info
+    const getRouteName = () => {
+        if (path.summary) return path.summary;
+        
+        // If no summary provided, create one based on transport modes
+        const uniqueModes = [...new Set(transportModes)];
+        if (uniqueModes.length === 0) return "Direct Route";
+        
+        if (uniqueModes.length === 1) {
+            const mode = uniqueModes[0]?.toUpperCase() || '';
+            
+            if (mode === 'FLIGHTS' || mode === 'FLIGHT') return "Direct Flight";
+            if (mode === 'RAILS' || mode === 'RAIL' || mode === 'TRAIN') return "Direct Train";
+            if (mode === 'BUS') return "Direct Bus";
+            if (mode === 'CAB' || mode === 'TAXI') return "Direct Taxi";
+            return `Direct ${mode}`;
+        }
+        
+        // Multiple modes, create a "Via" route name
+        return "Via " + uniqueModes.map(mode => {
+            const m = mode?.toUpperCase() || '';
+            if (m === 'FLIGHTS' || m === 'FLIGHT') return "Flight";
+            if (m === 'RAILS' || m === 'RAIL' || m === 'TRAIN') return "Train";
+            if (m === 'BUS') return "Bus";
+            if (m === 'CAB' || m === 'TAXI') return "Taxi";
+            return m;
+        }).join(' & ');
+    };
+    
+    const routeName = getRouteName();
 
     return (
         <div className={styles.resultRow}>
             <div className={styles.resultSelectableArea} onClick={() => Dispatcher.dispatch(new SetSelectedPath(path))}>
                 <div className={resultSummaryClass}>
-                    <div className={styles.resultValues}>
-                        <span className={styles.resultMainText}>{timeToText(path.travelDuration)}</span>
-                        <span className={styles.resultSecondaryText}>
-                            {metersToShortText(path.distance * 1000, showDistanceInMiles)}
-                        </span>
-                        {priceDisplay && (
-                            <span className={styles.resultPriceText}>
-                                {priceDisplay}
-                                </span>
-                        )}
-                        
-                        {/* Display route tags if available - below the price */}
+                    <div className={styles.resultHeader}>
+                        {/* Display route tags at the top if available */}
                         {path.tags && path.tags.length > 0 && (
                             <div className={styles.routeTags}>
                                 {path.tags.map((tag, index) => (
@@ -151,26 +174,51 @@ function RoutingResult({
                                         style={{ backgroundColor: getToneColor(tag.tone) }}
                                     >
                                         {tag.content}
-                                </span>
+                                    </span>
                                 ))}
                             </div>
                         )}
                         
+                        <div className={styles.titleRow}>
+                            <div className={styles.routeNameContainer}>
+                                <div className={styles.routeName}>{routeName}</div>
+                                {priceDisplay && (
+                                    <span className={styles.resultPriceText}>
+                                        {priceDisplay}
+                                    </span>
+                                )}
+                            </div>
+                            <div className={styles.timeDistanceContainer}>
+                                <div className={styles.resultMainText}>{timeToText(path.travelDuration)}</div>
+                                <span className={styles.resultSecondaryText}>
+                                    {metersToShortText(path.distance * 1000, showDistanceInMiles)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className={styles.resultValues}>
                         {/* Improved visual representation of the route */}
                         {path.segments && path.segments.length > 0 && (
                             <div className={styles.routeVisualization}>
                                 {/* Horizontal line connecting all points */}
                                 <div className={styles.visualPath}></div>
                                 
-                                {/* Display each city with its actual name */}
-                                {locationNames.map((location, index) => (
-                                    <div key={index} className={styles.cityContainer}>
-                                        <div className={`${styles.cityPoint} ${index === 0 ? styles.origin : index === locationNames.length - 1 ? styles.destination : ''}`}></div>
-                                        <div className={styles.cityName} title={location}>
-                                            {location}
-                    </div>
-                </div>
-                                ))}
+                                {/* Display origin point */}
+                                <div className={styles.cityContainer} style={{position: 'absolute', left: '0%'}}>
+                                    <div className={`${styles.cityPoint} ${styles.origin}`}></div>
+                                    <div className={styles.cityName} title={locationNames[0]}>
+                                        {locationNames[0]}
+                                    </div>
+                                </div>
+                                
+                                {/* Display destination point */}
+                                <div className={styles.cityContainer} style={{position: 'absolute', right: '0%'}}>
+                                    <div className={`${styles.cityPoint} ${styles.destination}`}></div>
+                                    <div className={styles.cityName} title={locationNames[locationNames.length - 1]}>
+                                        {locationNames[locationNames.length - 1]}
+                                    </div>
+                                </div>
                                 
                                 {/* Transport mode icons between cities */}
                                 {transportModes.map((mode, index) => (
@@ -178,26 +226,34 @@ function RoutingResult({
                                         key={index} 
                                         className={styles.transportIconOverlay}
                                         style={{ 
-                                            left: `calc(${index + 0.5} * (100% / ${locationNames.length - 1}))`,
-                                            transform: 'translateX(-50%)'
+                                            left: `${(index + 1) * (100 / (transportModes.length + 1))}%`,
                                         }}
                                     >
                                         {getTransportIcon(mode)}
                                     </div>
                                 ))}
-            </div>
+                                
+                                {/* Display intermediate points if any */}
+                                {locationNames.slice(1, -1).map((location, index) => (
+                                    <div 
+                                        key={index} 
+                                        className={styles.cityContainer} 
+                                        style={{
+                                            position: 'absolute',
+                                            left: `${(index + 1) * (100 / (locationNames.length - 1))}%`,
+                                        }}
+                                    >
+                                        <div className={`${styles.cityPoint}`}></div>
+                                        <div className={styles.cityName} title={location}>
+                                            {location}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
-                    
-                    {path.summary && (
-                        <div className={styles.routeInfoContainer}>
-                            <div className={styles.routeSummary}>
-                                {path.summary}
-                            </div>
-                        </div>
-                    )}
                 </div>
-                </div>
+            </div>
         </div>
     )
 }

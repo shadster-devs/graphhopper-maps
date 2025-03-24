@@ -1,3 +1,11 @@
+/* Add a horizontal separator before routing results */
+.routingResultsSeparator {
+    height: 2px;
+    background-color: #f0f0f0;
+    margin: 15px 0;
+    width: 100%;
+}
+
 .resultRow {
     border-bottom: 1px lightgray solid;
 }
@@ -9,26 +17,66 @@
 
 .resultSelectableArea:hover .resultSummary {
     border-left: rgba(201, 217, 241, 0.7) solid 0.25rem;
-    padding: 0 1rem 0 15px;
+    padding: 0 1rem 0 2rem;
 }
 
 .resultSummary {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     justify-content: space-between;
-    padding: 0 1rem 0 15px;
+    padding: 0 1rem 0 2rem;
     border-left: white solid 0.25rem;
     gap: 10px;
 }
 
 .selectedResultSummary {
     border-left: rgba(39, 100, 200, 0.85) solid 0.25rem !important;
-    padding: 0 1rem 0 15px;
+    padding: 0 1rem 0 2rem;
+}
+
+/* New styles for the header with route name and time */
+.resultHeader {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.titleRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.routeNameContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-right: 10px;
+}
+
+.timeDistanceContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 80px;
+}
+
+.routeName {
+    font-weight: bold;
+    font-size: large;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 2px;
 }
 
 .resultValues {
     cursor: pointer;
-    width: 48%;
+    width: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -36,13 +84,142 @@
 .resultMainText {
     font-size: large;
     font-weight: bold;
-    margin-bottom: 0.1rem;
+    color: #2764c8;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.resultSecondaryText {
+    display: block;
+    color: #7780a1;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-align: right;
+    margin-top: 2px;
+}
+
+.resultPriceText {
+    display: block;
+    color: #4CAF50;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-top: 2px;
+}
+
+.routeTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 4px;
+    width: 100%;
+}
+
+.routeTag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: white;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 150px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.routeVisualization {
+    position: relative;
+    width: 100%;
+    height: 40px;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.visualPath {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    right: 30px;
+    height: 2px;
+    background-color: #e0e0e0;
+    z-index: 1;
+}
+
+.cityPoint {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: #aaaaaa;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 3px white;
+    position: relative;
+}
+
+.cityPoint.destination {
+    background-color: #F44336;
+}
+
+.cityPoint.origin {
+    background-color: #3f51b5;
+}
+
+.cityPoint::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background-color: white;
+    border-radius: 50%;
+}
+
+.cityContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+    transform: translateX(-50%);
+}
+
+.cityName {
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #444;
+    letter-spacing: 0.2px;
+}
+
+.transportIconOverlay {
+    position: absolute;
+    z-index: 3;
+    background-color: white;
+    border-radius: 50%;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: -7px;
+    transform: translateX(-50%);
+}
+
+.transportIconOverlay svg {
+    width: 18px;
+    height: 18px;
 }
 
 .resultSecondaryText,
 .exportButton div,
 .elevationHint {
     color: #5b616a;
+    margin-bottom: 4px;
 }
 
 .resultTertiaryText {
@@ -202,20 +379,6 @@
     padding: 10px 5px 10px 3rem;
 }
 
-.resultSecondaryText {
-    display: inline-block;
-    color: #7780a1;
-    font-size: 0.9rem;
-    font-weight: bold;
-}
-
-.resultPriceText {
-    display: inline-block;
-    color: #4CAF50;
-    font-size: 0.9rem;
-    font-weight: bold;
-}
-
 .transportModeSummary {
     font-size: 0.85rem;
     color: #5b616a;
@@ -251,125 +414,10 @@
     margin: 0 2px;
 }
 
-.routeTags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 5px;
-    margin-bottom: 3px;
-}
-
-.routeTag {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    color: white;
-    font-weight: 500;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    max-width: 150px;
-    overflow: hidden;
-}
-
 .routeInfoContainer {
     display: flex;
     flex-direction: column;
     gap: 4px;
     margin-top: 4px;
     width: 48%;
-}
-
-.routeVisualization {
-    margin-top: 15px;
-    margin-bottom: 10px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    position: relative;
-    min-height: 75px;
-    padding: 0 5px;
-}
-
-.visualPath {
-    position: absolute;
-    height: 2px;
-    background-color: #e0e0e0;
-    top: 50%;
-    left: 20px;
-    right: 20px;
-    z-index: 1;
-    transform: translateY(-50%);
-}
-
-.cityPoint {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background-color: #aaaaaa;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 3px white;
-    position: relative;
-}
-
-.cityPoint.destination {
-    background-color: #F44336;
-}
-
-.cityPoint.origin {
-    background-color: #3f51b5;
-}
-
-.cityPoint::after {
-    content: '';
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background-color: white;
-    border-radius: 50%;
-}
-
-.cityContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 2;
-    padding: 0 3px;
-}
-
-.cityName {
-    margin-top: 10px;
-    font-size: 11px;
-    font-weight: 500;
-    text-align: center;
-    max-width: 90px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #444;
-    letter-spacing: 0.2px;
-}
-
-.transportIconOverlay {
-    position: absolute;
-    z-index: 3;
-    background-color: white;
-    border-radius: 50%;
-    padding: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    top: 50%;
-    transform: translate(-50%, -50%) !important;
-    border: none;
-}
-
-.transportIconOverlay svg {
-    width: 18px;
-    height: 18px;
 }

@@ -49,6 +49,7 @@ import useStaticTransportIcons from '@/layers/UseStaticTransportIcons'
 import { PathDisplayMode } from '@/stores/SettingsStore'
 import { ApiImpl } from '@/api/Api'
 import { tr } from './translation/Translation'
+import RoutingDetailsPanel from '@/map/RoutingDetailsPanel'
 
 export const POPUP_CONTAINER_ID = 'popup-container'
 export const SIDEBAR_CONTENT_ID = 'sidebar-content'
@@ -62,54 +63,43 @@ export default function App() {
     const [mapOptions, setMapOptions] = useState(getMapOptionsStore().state)
     const [mapFeatures, setMapFeatures] = useState(getMapFeatureStore().state)
     const [pois, setPOIs] = useState(getPOIsStore().state)
+    
+    // State to track if the floating modal should be visible
+    const [showRouteModal, setShowRouteModal] = useState(false)
 
     const map = getMap()
 
-    // Add a new useEffect to handle map center adjustment for the wider sidebar
+    // Remove the manual map center adjustment - we don't need it with fixed sidebar layout
     useEffect(() => {
-        // Function to adjust the map center based on sidebar width
-        const adjustMapCenter = () => {
-            // Only adjust if not in small screen mode (where sidebar is on top)
-            const isSmallScreen = window.innerWidth <= 44 * 16; // 44rem in pixels
-            if (!isSmallScreen && map) {
-                // Calculate the sidebar offset (as a fraction of the map width)
-                const sidebarWidthPct = 0.4; // 40% of screen width
-                const offsetRatio = sidebarWidthPct / 2; // Center needs to move by half the sidebar width ratio
-                
-                // Get current view and its properties
-                const view = map.getView();
-                const currentCenter = view.getCenter();
-                const mapSize = map.getSize();
-                
-                if (currentCenter && mapSize) {
-                    // Calculate the offset in pixels then convert to map coordinates
-                    const offsetPixels = mapSize[0] * offsetRatio;
-                    const resolution = view.getResolution() || 1;
-                    const offsetCoords = [offsetPixels * resolution, 0];
-                    
-                    // Apply the offset to the center
-                    const newCenter = [
-                        currentCenter[0] + offsetCoords[0],
-                        currentCenter[1]
-                    ];
-                    
-                    // Update the view center
-                    view.setCenter(newCenter);
-                }
+        // Just make sure the map size is updated when component mounts or window is resized
+        const updateMapSize = () => {
+            if (map && !settings.isScreenshot) {
+                map.updateSize();
             }
         };
         
-        // Adjust when component mounts
-        adjustMapCenter();
+        // Update size when component mounts
+        updateMapSize();
         
-        // Add resize listener to readjust when window size changes
-        window.addEventListener('resize', adjustMapCenter);
+        // Add resize listener
+        window.addEventListener('resize', updateMapSize);
         
         // Clean up
         return () => {
-            window.removeEventListener('resize', adjustMapCenter);
+            window.removeEventListener('resize', updateMapSize);
         };
-    }, [map]);
+    }, [map, settings.isScreenshot]);
+    
+    // Show the floating modal when a route is selected
+    useEffect(() => {
+        // Check if we have a valid route with segments
+        if (route.selectedPath && route.selectedPath.segments && route.selectedPath.segments.length > 0) {
+            console.log("Route selected, should show modal", route.selectedPath);
+            setShowRouteModal(true);
+        } else {
+            setShowRouteModal(false);
+        }
+    }, [route.selectedPath]);
 
     useEffect(() => {
         const onSettingsChanged = () => setSettings(getSettingsStore().state)
@@ -215,9 +205,26 @@ export default function App() {
             
             // Only override zoom if the automatic fit isn't appropriate
             if (diagonal < 0.05 || (screenDiagonal > 1000 && diagonal < 0.2)) {
-                const zoom = diagonal < 0.05 ? 11 : 
-                             diagonal < 0.2 ? 10 : 
-                             diagonal < 1 ? 9 : 8;
+                // Calculate zoom dynamically using a logarithmic scale
+                // This provides smoother transitions between zoom levels
+                // log base is chosen to give appropriate zoom levels across different scales
+                const baseZoom = 11; // Maximum zoom level for very small areas
+                const minZoom = 8;   // Minimum zoom level for larger areas
+                
+                // Calculate zoom level using logarithmic scale
+                // smaller diagonal = higher zoom
+                let calculatedZoom;
+                if (diagonal <= 0.001) {
+                    calculatedZoom = baseZoom;
+                } else {
+                    // Using natural log with scaling factors to get appropriate zoom levels
+                    calculatedZoom = baseZoom - (Math.log(diagonal * 1000) / Math.log(4));
+                }
+                
+                // Ensure zoom stays within reasonable bounds
+                const zoom = Math.max(minZoom, Math.min(baseZoom, Math.round(calculatedZoom)));
+                
+                // Apply zoom
                 map.getView().setZoom(zoom);
             }
         }
@@ -249,6 +256,7 @@ export default function App() {
                     error={error}
                     encodedValues={info.encoded_values}
                     drawAreas={settings.drawAreasEnabled}
+                    showRouteModal={showRouteModal}
                 />
             </div>
         </SettingsContext.Provider>
@@ -263,9 +271,15 @@ interface LayoutProps {
     error: ErrorStoreState
     encodedValues: object[]
     drawAreas: boolean
+    showRouteModal: boolean
 }
 
 function TransportModeLegend({ route }: { route: RouteStoreState }) {
+    // Always return null to hide the legend as requested
+    return null;
+    
+    // Original code below is kept for reference but never executes
+    /*
     // Get access to the settings context to check if screenshot mode is enabled
     const settings = useContext(SettingsContext)
     
@@ -378,33 +392,61 @@ function TransportModeLegend({ route }: { route: RouteStoreState }) {
             ))}
         </div>
     );
+    */
 }
 
-function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues, drawAreas }: LayoutProps) {
+function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues, drawAreas, showRouteModal }: LayoutProps) {
     const [showSidebar, setShowSidebar] = useState(true)
+    // State to track if the floating modal should be closed manually
+    const [hideRouteModal, setHideRouteModal] = useState(false)
     
     // Get access to the settings context to check if screenshot mode is enabled
     const settings = useContext(SettingsContext)
+    
+    // Reset modal visibility when route changes
+    useEffect(() => {
+        console.log("Route changed in layout, resetting hideRouteModal");
+        setHideRouteModal(false);
+    }, [route.selectedPath]);
+    
+    // Handler to close the modal
+    const handleCloseModal = useCallback(() => {
+        console.log("Modal close requested");
+        setHideRouteModal(true);
+    }, []);
+    
+    // Log when props change
+    useEffect(() => {
+        console.log("Layout props updated", { 
+            showRouteModal, 
+            showSidebar, 
+            hideRouteModal,
+            hasRoute: route.selectedPath && route.selectedPath.segments && route.selectedPath.segments.length > 0
+        });
+    }, [showRouteModal, showSidebar, hideRouteModal, route.selectedPath]);
     
     // In screenshot mode, don't show any UI components
     if (settings.isScreenshot) {
         return (
             <>
-                <div className={styles.map}>
-                    <MapComponent map={map} />
+                <div className={styles.map} style={{ padding: 0 }}>
+                    <div className={styles.mapContainer} style={{ borderRadius: 0, border: 'none' }}>
+                        <MapComponent map={map} />
+                    </div>
                 </div>
             </>
         )
     }
+    
+    // Always show the modal when we have a route, regardless of sidebar state
+    // Only hide it if user explicitly closed it
+    const isModalVisible = showRouteModal && !hideRouteModal;
     
     return (
         <>
             {showSidebar ? (
                 <div className={styles.sidebar}>
                     <div className={styles.sidebarContent} id={SIDEBAR_CONTENT_ID}>
-                        <PlainButton onClick={() => setShowSidebar(false)} className={styles.sidebarCloseButton}>
-                            <Cross />
-                        </PlainButton>
                         
                         {/* Fixed container for search inputs */}
                         <div className={styles.fixedSearchContainer}>
@@ -424,16 +466,30 @@ function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues
                     </div>
                 </div>
             ) : (
-                <div className={styles.sidebarWhenClosed} onClick={() => setShowSidebar(true)}>
-                    <PlainButton className={styles.sidebarOpenButton}>
+                <div className={styles.sidebarWhenClosed}>
+                    <PlainButton className={styles.sidebarOpenButton} onClick={() => setShowSidebar(true)}>
                         <Menu />
                     </PlainButton>
                 </div>
             )}
             <div className={styles.popupContainer} id={POPUP_CONTAINER_ID} />
             <div className={styles.map}>
-                <MapComponent map={map} />
-                <TransportModeLegend route={route} />
+               
+                {/* Map container with rounded corners */}
+                <div className={styles.mapContainer}>
+                    <MapComponent map={map} />
+                </div>
+
+                 {/* Routing details panel positioned above the map */}
+                 <div className={styles.routingDetailsPanelWrapper}>
+                    <RoutingDetailsPanel
+                        selectedPath={route.selectedPath}
+                        showDistanceInMiles={settings.showDistanceInMiles}
+                        isVisible={isModalVisible}
+                        onClose={handleCloseModal}
+                    />
+                </div>
+                
             </div>
         </>
     )

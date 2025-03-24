@@ -26,10 +26,15 @@ const BASE_SEGMENT_DURATION = 5000;
  * @returns A style object for the icon
  */
 function createIconStyle(iconSvg: string, visible: boolean, rotation: number = 0): Style {
+  // First clean the SVG to remove any stroke attributes that might be causing rendering issues
+  const cleanSvg = iconSvg
+    .replace(/stroke="[^"]*"/g, '')
+    .replace(/stroke-width="[^"]*"/g, '');
+    
   return new Style({
     image: new Icon({
-      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`,
-      scale: 2.0,
+      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cleanSvg)}`,
+      scale: 1.5,
       opacity: visible ? 1 : 0, // Set opacity based on visibility
       rotation: rotation, // Apply rotation for flight icon
     }),
@@ -234,9 +239,16 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
           return; // Skip animation if there's no path to follow
         }
         
-        // Use constant animation speed for all transport modes
+        // Fixed duration for each segment (3 seconds)
+        const SEGMENT_DURATION = 3000; // 3 seconds in milliseconds
+        
+        // Get time since segment activation
         const segmentStartTime = feature.get('activationTime') || startTimeRef.current;
         const segmentElapsedTime = Date.now() - segmentStartTime;
+        
+        // Calculate progress based on time (0-1)
+        // This ensures each segment takes exactly 3 seconds regardless of distance
+        const progress = Math.min(segmentElapsedTime / SEGMENT_DURATION, 1);
         
         // Calculate total path distance
         let totalDistance = 0;
@@ -246,16 +258,9 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
           totalDistance += Math.sqrt(dx*dx + dy*dy);
         }
         
-        // Calculate distance to travel based on constant speed
-        // Use a speed factor that works well for all modes - adjust this value as needed
-        const speedFactor = 300000; // Distance units per second
-        const distanceTraveled = (segmentElapsedTime / 1000) * speedFactor;
-        
-        // Convert distance to progress (0-1)
-        let progress = Math.min(distanceTraveled / totalDistance, 1);
-        
-        // Calculate position along the path (linear interpolation)
+        // Calculate position along the path based on progress (linear interpolation)
         let currentDistance = 0;
+        let targetDistance = progress * totalDistance;
         let currentPosition = path[0];
         let segmentStart = 0;
         let segmentEnd = 0;
@@ -267,11 +272,11 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
           const dy = path[i][1] - path[i-1][1];
           const segmentLength = Math.sqrt(dx*dx + dy*dy);
           
-          if (currentDistance + segmentLength >= distanceTraveled || i === path.length - 1) {
+          if (currentDistance + segmentLength >= targetDistance || i === path.length - 1) {
             // We're in this segment
             segmentStart = i - 1;
             segmentEnd = i;
-            segmentProgress = (distanceTraveled - currentDistance) / segmentLength;
+            segmentProgress = (targetDistance - currentDistance) / segmentLength;
             segmentProgress = Math.max(0, Math.min(1, segmentProgress)); // Clamp between 0-1
             
             // Linear interpolation between points

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Dispatcher from '@/stores/Dispatcher'
 import styles from '@/sidebar/search/Search.module.css'
+import routingStyles from '@/sidebar/RoutingResult.module.css'
 import { Coordinate, getBBoxFromCoord, QueryPoint } from '@/stores/QueryStore'
 import { AddPoint, ClearRoute, InvalidatePoint, MovePoint, RemovePoint, SetBBox, SetPoint } from '@/actions/Actions'
 import RemoveIcon from './minus-circle-solid.svg'
@@ -46,6 +47,8 @@ export default function Search({ points, map }: { points: QueryPoint[]; map: Map
                 ))}
             </div>
             {showSettings && <SettingsBox />}
+            
+            <div className={routingStyles.routingResultsSeparator}></div>
         </div>
     )
 }

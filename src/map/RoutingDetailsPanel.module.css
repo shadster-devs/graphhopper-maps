@@ -1,0 +1,380 @@
+.routingDetailsPanelContainer {
+    position: relative;
+    width: 100%;
+    background-color: white;
+    border-radius: 12px 0 0 0 ;
+    border: 1px solid #d0d0d0;
+    z-index: 1500;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+    transition: height 0.3s ease;
+}
+
+.collapsed {
+    height: 50px !important;
+    overflow: hidden;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalContent {
+    padding: 10px;
+    position: relative;
+    background-color: #ffffff;
+    padding-bottom: 15px;
+}
+
+.titleBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-top: 5px;
+}
+
+.leftSection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.journeyTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.collapseToggleButton {
+    background-color: #f0f4ff;
+    border: 1px solid #e0e6f2;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #4285f4;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.collapseToggleButton:hover {
+    background-color: #e0e6f2;
+}
+
+.expandIcon, .collapseIcon {
+    display: flex;
+    align-items: center;
+}
+
+.expandIcon::before {
+    content: '▲';
+    font-size: 10px;
+    margin-right: 5px;
+}
+
+.collapseIcon::before {
+    content: '▼';
+    font-size: 10px;
+    margin-right: 5px;
+}
+
+/* Journey Timeline Layout */
+.journeyTimeline {
+    display: flex;
+    flex-direction: column;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 10px;
+}
+
+/* Location point styling */
+.locationPoint {
+    display: flex;
+    align-items: center;
+    margin: 4px 0;
+    position: relative;
+    z-index: 2;
+}
+
+.pointMarker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    background-color: white;
+    margin-right: 10px;
+    position: relative;
+    z-index: 2;
+}
+
+.originMarker {
+    background-color: #4caf50;
+    border-color: #4caf50;
+}
+
+.destinationMarker {
+    background-color: #f44336;
+    border-color: #f44336;
+}
+
+.locationName {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.segmentDetails {
+    position: relative;
+    padding: 10px 15px;
+    background-color: white;
+    border-radius: 10px;
+    border: 1px solid #d0d0d0;
+    margin-top: 7px;
+    margin-bottom: 5px;
+    z-index: 1;
+    width: calc(100% - 28px);
+}
+
+.segmentSingleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.serviceInfo {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    min-width: 160px;
+    flex-shrink: 0;
+}
+
+.inlineIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+.inlineIcon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.serviceCount {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.travelTimeCompact {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+
+.clockIcon {
+    margin-right: 6px;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.travelTime {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-right: 6px;
+}
+
+.approxLabel {
+    font-size: 10px;
+    color: #777;
+    display: none;
+}
+
+.pricingCompact {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: baseline;
+}
+
+.priceLabel {
+    font-size: 10px;
+    color: #777;
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.bookButton {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    text-align: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 110px;
+    width: 110px;
+}
+
+.bookButton:hover {
+    background-color: #3367d6;
+}
+
+/* Collapsed state bar */
+.collapsedContent {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    padding: 0 15px;
+}
+
+.collapsedInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+    max-width: calc(100% - 40px);
+}
+
+.collapsedTimeDistance {
+    white-space: nowrap;
+    margin-right: 12px;
+}
+
+.collapsedRoute {
+    font-size: 16px;
+    font-weight: 1000;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.collapsedTime {
+    font-size: 16px;
+    font-weight: 1000;
+    color: #333;
+
+}
+
+.collapsedDistance {
+    font-size: 16px;
+    color: #666;
+    font-weight: 1000;
+}
+
+.routeArrow {
+    margin: 0 4px;
+    color: #888;
+    font-size: 12px;
+}
+
+.journeySegment {
+    position: relative;
+}
+
+/* Vertical line connecting points */
+.journeySegment::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #ddd;
+    z-index: 0;
+}
+
+/* Responsive updates */
+@media (min-width: 769px) {
+    .bookingInfo {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    
+    .pricingSection {
+        min-width: 160px;
+        text-align: right;
+    }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .routingDetailsPanelContainer {
+        bottom: 15px;
+        left: 15px;
+        right: 15px;
+    }
+    
+    .modalContent {
+        padding: 8px 10px 15px;
+    }
+    
+    .journeyTimeline {
+        padding: 0 5px;
+    }
+    
+    .segmentSingleRow {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .serviceInfo {
+        width: 100%;
+    }
+    
+    .travelTimeCompact, .pricingCompact {
+        margin: 5px 10px 5px 0;
+    }
+    
+    .bookButton {
+        margin-left: auto;
+    }
+    
+    .collapsedInfo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+} 

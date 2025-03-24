@@ -90,19 +90,62 @@ export default class MapActionReceiver implements ActionReceiver {
 }
 
 function fitBounds(map: Map, bbox: Bbox, isSmallScreen: boolean, mapSize?: number[]) {
-    const sw = fromLonLat([bbox[0], bbox[1]])
-    const ne = fromLonLat([bbox[2], bbox[3]])
+    const sw = fromLonLat([bbox[0], bbox[1]]);
+    const ne = fromLonLat([bbox[2], bbox[3]]);
     
-    // Increase left padding for non-small screens to account for the wider sidebar (40% of screen width)
-    // top, right, bottom, left
-    const padding = isSmallScreen 
-        ? [200, 16, 32, 16] 
-        : [100, 100, 200, 800]; // Increased left padding from 500 to 800
+    // Get the map size or fallback to window size
+    const size = mapSize ? mapSize : map.getSize() || [window.innerWidth, window.innerHeight];
+    const screenWidth = size[0];
+    const screenHeight = size[1];
     
-    map.getView().fit([sw[0], sw[1], ne[0], ne[1]], {
-        size: mapSize ? mapSize : map.getSize(),
-        padding: padding,
-    })
+    // Calculate the diagonal of the bounding box in degrees
+    const bboxDiagonal = Math.hypot(bbox[2] - bbox[0], bbox[3] - bbox[1]);
+    
+    // Calculate dynamic padding based on screen size and bbox size
+    // For very small bounding boxes, use larger padding
+    // For large bounding boxes, use smaller padding
+    let paddingFactor = 0.1; // Base padding as 10% of screen dimension
+    
+    // Adjust padding factor based on bbox size (smaller bbox = larger padding)
+    if (bboxDiagonal < 0.01) {
+        paddingFactor = 0.25; // 25% padding for very small areas
+    } else if (bboxDiagonal < 0.1) {
+        paddingFactor = 0.20; // 20% padding for small areas
+    } else if (bboxDiagonal < 0.5) {
+        paddingFactor = 0.15; // 15% padding for medium areas
+    }
+    
+    // Minimum padding to ensure there's always some space
+    const minPadding = 20;
+    
+    if (isSmallScreen) {
+        // For small screens, use even padding on all sides
+        const padding = Math.max(minPadding, Math.round(screenHeight * paddingFactor));
+        
+        map.getView().fit([sw[0], sw[1], ne[0], ne[1]], {
+            size: size,
+            padding: [padding, padding, padding, padding]
+        });
+    } else {
+        // For larger screens with sidebar, we need to account for the fixed sidebar (40% width)
+        // Instead of trying to center in the remaining space (which creates an offset),
+        // we'll use balanced padding on all sides of the viewable area
+        
+        // The available map width is 60% of screen width (remaining after 40% sidebar)
+        const availableWidth = screenWidth * 0.6;
+        
+        // Calculate horizontal padding as a percentage of the available width
+        const horizontalPadding = Math.max(minPadding, Math.round(availableWidth * paddingFactor));
+        
+        // Calculate vertical padding as a percentage of the screen height
+        const verticalPadding = Math.max(minPadding, Math.round(screenHeight * paddingFactor));
+        
+        // Apply the fit with balanced padding
+        map.getView().fit([sw[0], sw[1], ne[0], ne[1]], {
+            size: [availableWidth, screenHeight], // Use available width for size calculation
+            padding: [verticalPadding, horizontalPadding, verticalPadding, horizontalPadding]
+        });
+    }
 }
 
 const calculateBBox = (path: SegmentedPath): Bbox => {

@@ -3,13 +3,11 @@ import { FaTrainSubway } from "react-icons/fa6";
 
 import { TRANSPORT_MODE_COLORS } from "./TransportModes";
 
-const iconStyle = { size: 15, strokeWidth: 25, stroke: "black" }; // Common style
-
-
-export const FlightIcon = () => <FaPlane size={15} color={TRANSPORT_MODE_COLORS.FLIGHTS.icon} style={iconStyle} />;
-export const TrainIcon = () => <FaTrainSubway size={15} color={TRANSPORT_MODE_COLORS.RAILS.icon} style={iconStyle} />;
-export const BusIcon = () => <FaBus size={15} color={TRANSPORT_MODE_COLORS.BUS.icon} style={iconStyle} />;
-export const CabIcon = () => <FaTaxi size={15} color={TRANSPORT_MODE_COLORS.CAB.icon} style={iconStyle} />;
+// Removed stroke to make icons cleaner and more modern
+export const FlightIcon = () => <FaPlane size={18} color={TRANSPORT_MODE_COLORS.FLIGHTS.icon} style={{ stroke: "black", strokeWidth: 25 }} /> ;
+export const TrainIcon = () => <FaTrainSubway size={18} color={TRANSPORT_MODE_COLORS.RAILS.icon} style={{ stroke: "black", strokeWidth: 25 }} />;
+export const BusIcon = () => <FaBus size={18} color={TRANSPORT_MODE_COLORS.BUS.icon} style={{ stroke: "black", strokeWidth: 25 }}   />;
+export const CabIcon = () => <FaTaxi size={18} color={TRANSPORT_MODE_COLORS.CAB.icon} style={{ stroke: "black", strokeWidth: 25 }} />;
 
 
 // Helper function to get the appropriate icon for a transport mode

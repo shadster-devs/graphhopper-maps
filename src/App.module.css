@@ -3,57 +3,73 @@
     height: 100%;
     padding: 0;
     margin: 0;
-    display: grid;
-    grid-template-columns: 40% 1fr auto;
-    grid-template-rows: 100%;
-    justify-content: space-between;
-    overflow: auto;
+    display: flex;
+    overflow: hidden;
     -webkit-user-select: none;
     user-select: none; /* firefox does not ignore -webkit-user-select so make this explicit, see #217 */
+    background-color: #f0f4ff;
 }
 
 .map {
-    grid-column: 1 / span 3;
-    grid-row: 1 / span 1;
+    flex: 1;
+    height: 100%;
+    position: relative;
+    box-sizing: border-box;
+    padding-left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: #f0f4ff;
+}
+
+.mapContainer {
+    flex: 1;
+    border-radius: 0px 0px 0px 12px;
+    overflow: hidden;
+    border: 1px solid #d0d0d0;
+    position: relative;
+}
+
+/* Make sure the OpenLayers map container also respects the rounded corners */
+.mapContainer > div, 
+.mapContainer > div > div,
+.mapContainer > div > canvas {
+    border-radius: 0px 0px 0px 12px;
+    overflow: hidden;
 }
 
 .sidebar {
-    grid-column: 1 / span 1;
-    grid-row: 1 / span 1;
-    background-color: transparent;
-    pointer-events: none;
+    width: 40%;
+    height: 100%;
+    background-color: white;
     z-index: 1;
-    align-self: stretch;
-    width: 100%;
+    border-radius: 0;
+    overflow: hidden;
+    border: 1px solid #d0d0d0;
+    position: relative;
 }
 
 .popupContainer {
-    grid-column: 1 / span 1;
-    grid-row: 1 / span 1;
+    position: absolute;
+    top: 0;
+    left: 40%;
+    right: 0;
+    bottom: 0;
     background-color: transparent;
     pointer-events: none;
     z-index: 2;
-    align-self: stretch;
-
-    margin: 0 0.5rem 0 0.5rem;
-    overflow: hidden;
-    position: relative;
 }
 
 .sidebarContent {
-    padding-top: 1rem;
-    padding-bottom: 0.5rem;
+    padding: 1rem;
     position: relative;
     display: flex;
     flex-direction: column;
-    border-radius: 0.5rem;
+    height: 100%;
     background-color: white;
-    max-height: calc(100% - 2.4rem);
-    height: calc(100% - 2rem);
-    margin: 0.5rem;
-    box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.1);
     pointer-events: all;
     overflow: hidden;
+    border-right: 1px solid #f0f0f0;
 }
 
 .fixedSearchContainer {
@@ -167,12 +183,20 @@
 
 @media (max-width: 44rem) {
     .appWrapper {
-        grid-template-columns: 100%;
-        grid-template-rows: auto 0 1fr auto auto;
+        flex-direction: column;
     }
     
     .sidebar {
         width: 100%;
+        height: auto;
+    }
+    
+    .map {
+        height: calc(100% - 50px);
+    }
+    
+    .popupContainer {
+        left: 0;
     }
 }
 
@@ -200,14 +224,12 @@
 
 .sidebarCloseButton {
     position: absolute;
-
-    color: lightgray !important; /* unsure why !important is necessary here but not in ErrorMessage.module.css for same <Cross/> */
-
+    color: lightgray !important;
     height: 10px;
     width: 10px;
-
-    right: 7px;
-    top: 6px;
+    right: 12px;
+    top: 12px;
+    z-index: 3;
 }
 
 .sidebarCloseButton:hover {
@@ -215,22 +237,35 @@
 }
 
 .sidebarWhenClosed {
+    width: 50px;
+    height: 100%;
     z-index: 1;
     position: absolute;
     background-color: white;
-    border-radius: 0.5rem;
-    box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.1);
-    padding: 0.25em;
-    margin: 0.5em;
+    border: 1px solid #d0d0d0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .sidebarOpenButton svg {
     fill: gray;
-
     width: 30px;
     height: 24px;
 }
 
 .sidebarOpenButton:hover svg {
     fill: black;
+}
+
+.routingDetailsPanelWrapper {
+    position: relative;
+    width: 100%;
+    pointer-events: auto;
+}
+
+.routingDetailsPanelWrapper > div {
+    position: static;
+    pointer-events: auto;
+    width: 100%;
 }
