@@ -376,7 +376,7 @@ function addSelectedPathsLayer(map: Map, selectedPath: SegmentedPath, displayMod
             // Get the solid icon color from the transport modes instead of the selected rgba color
             // This avoids issues with rgba colors in the marker SVG
             const normalizedMode = segment.mode?.toUpperCase() || 'default';
-            let markerColor = '#ADD8E6'; // light blue
+            let markerColor = 'rgb(118, 219, 255)'; // dark blue
             
             // Create a stop marker style
             stopMarker.setStyle(new Style({
@@ -386,7 +386,7 @@ function addSelectedPathsLayer(map: Map, selectedPath: SegmentedPath, displayMod
                         size: 24
                     }),
                     anchor: [0.5, 1], // Anchor point at the bottom center of the marker
-                    scale: 1.5
+                    scale: 1.1
                 })
             }));
             

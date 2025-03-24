@@ -7,24 +7,24 @@
 export const TRANSPORT_MODE_COLORS = {
     FLIGHTS: {
         icon: '#3C82F6',     // Blue
-        selected: 'rgba(60, 130, 246, 0.5)'  // Semi-transparent Blue
+        selected: 'rgba(60, 130, 246, 0.7)'  // Semi-transparent Blue
     },
     RAILS: {
         icon: '#10B981',     // Green
-        selected: 'rgba(16, 185, 129, 0.5)'  // Semi-transparent Green
+        selected: 'rgba(16, 185, 129, 0.7)'  // Semi-transparent Green
     },
     BUS: {
         icon: '#F59E0B',     // Amber
-        selected: 'rgba(245, 158, 11, 0.5)'  // Semi-transparent Amber
+        selected: 'rgba(245, 158, 11, 0.7)'  // Semi-transparent Amber
     },
     CAB: {
         icon: '#EC4899',     // Pink
-        selected: 'rgba(236, 72, 153, 0.5)'  // Semi-transparent Pink
+        selected: 'rgba(236, 72, 153, 0.7)'  // Semi-transparent Pink
     },
     // Default color for fallback
     default: {
         icon: '#6366F1',     // Indigo
-        selected: 'rgba(99, 102, 241, 0.5)'  // Semi-transparent Indigo
+        selected: 'rgba(99, 102, 241, 0.7)'  // Semi-transparent Indigo
     }
 };
 
