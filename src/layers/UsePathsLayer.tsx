@@ -83,13 +83,13 @@ function getStyleForMode(mode: string, isSelected: boolean = false): Style {
 // Function to create a path with directional arrows
 function addDirectionalPathFeature(source: VectorSource, segment: Segment, isSelected: boolean = false) {
     // Only proceed if segment.points exists
-    if (!segment.points || !segment.points.coordinates) {
+    if (!segment.points || segment.points.length < 2) {
         return;
     }
     
     // Create the main line feature
     const feature = new Feature();
-    const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
+    const coordinates = segment.points.map(c => fromLonLat(c));
     feature.setGeometry(new LineString(coordinates));
     
     // Apply base style for the line
@@ -223,7 +223,7 @@ function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: 
         
         path.segments.forEach((segment, segmentIndex) => {
             // Skip segments without valid points
-            if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+            if (!segment || !segment.points || segment.points.length < 2) {
                 return;
             }
             
@@ -232,7 +232,7 @@ function addUnselectedPathsLayer(map: Map, paths: SegmentedPath[], displayMode: 
                 segmentIndex: segmentIndex,
             });
             
-            const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
+            const coordinates = segment.points.map(c => fromLonLat(c));
             feature.setGeometry(new LineString(coordinates));
             
             // Apply mode-specific style (not selected, so isSelected = false)
@@ -309,16 +309,16 @@ function addAccessNetworkLayer(map: Map, selectedPath: SegmentedPath, queryPoint
     const waypoints: number[][] = [];
     
     if (selectedPath.segments && selectedPath.segments.length > 0) {
-        // Get first segment source coordinates
+        // Get first segment source coordinates directly from points
         const firstSegment = selectedPath.segments[0];
-        if (firstSegment.source && firstSegment.source.geo) {
-            waypoints.push([firstSegment.source.geo.lng, firstSegment.source.geo.lat, 0]);
+        if (firstSegment.points && firstSegment.points.length > 0) {
+            waypoints.push(firstSegment.points[0]);
         }
         
-        // Get last segment destination coordinates
+        // Get last segment destination coordinates directly from points
         const lastSegment = selectedPath.segments[selectedPath.segments.length - 1];
-        if (lastSegment.destination && lastSegment.destination.geo) {
-            waypoints.push([lastSegment.destination.geo.lng, lastSegment.destination.geo.lat, 0]);
+        if (lastSegment.points && lastSegment.points.length > 0) {
+            waypoints.push(lastSegment.points[lastSegment.points.length - 1]);
         }
     }
     
@@ -351,12 +351,12 @@ function addSelectedPathsLayer(map: Map, selectedPath: SegmentedPath, displayMod
     // Add each segment as a separate feature with its own style
     selectedPath.segments.forEach((segment, segmentIndex) => {
         // Skip segments without valid points
-        if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+        if (!segment || !segment.points || segment.points.length < 2) {
             return;
         }
         
         const feature = new Feature();
-        const coordinates = segment.points.coordinates.map(c => fromLonLat(c));
+        const coordinates = segment.points.map(c => fromLonLat(c));
         feature.setGeometry(new LineString(coordinates));
         
         // Apply mode-specific style for selected path

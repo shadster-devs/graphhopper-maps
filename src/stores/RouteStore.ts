@@ -2,7 +2,6 @@ import Store from '@/stores/Store'
 import { Action } from '@/stores/Dispatcher'
 import { ClearPoints, ClearRoute, RemovePoint, RouteRequestSuccess, SetPoint, SetSelectedPath } from '@/actions/Actions'
 import { SegmentedPath, SegmentedRoutingResult } from '@/api/sarathi'
-import { LineString } from 'geojson'
 
 export interface RouteStoreState {
     routingResult: SegmentedRoutingResult
@@ -83,15 +82,14 @@ export default class RouteStore extends Store<RouteStoreState> {
             // Ensure each segment has a points property
             const routesWithPoints = action.result.data.routes.map(route => {
                 const segmentsWithPoints = route.segments.map(segment => {
-                    // If points is empty, initialize with source and destination geo coordinates
-                    if (!segment.points && segment.source.geo && segment.destination.geo) {
-                        segment.points = {
-                            type: 'LineString',
-                            coordinates: [
-                                [segment.source.geo.lng, segment.source.geo.lat, 0],
-                                [segment.destination.geo.lng, segment.destination.geo.lat, 0]
-                            ]
-                        } as LineString;
+                    // If points is empty, initialize with default coordinates
+                    if (!segment.points || segment.points.length === 0) {
+                        // Since geo is no longer available, we create placeholder points
+                        // In production, these should come from the API
+                        segment.points = [
+                            [0, 0],
+                            [1, 1]
+                        ];
                     }
                     return segment;
                 });

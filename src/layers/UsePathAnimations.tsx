@@ -115,21 +115,21 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       // Render the icon to string using the mapped mode
       const iconSvg = renderToString(getTransportIcon(mappedMode));
       
-      // Get source and destination coordinates from the new format
-      const sourceCoords = segment.source.geo ? 
-        [segment.source.geo.lng, segment.source.geo.lat] : 
-        [0, 0]; // Default coordinates if source.geo is not available
+      // Get source coordinates from the first point in the segment's points array
+      const sourceCoords = segment.points && segment.points.length > 0 ? 
+        segment.points[0] : 
+        [0, 0]; // Default coordinates if points is not available
       
       // Create a feature with a point geometry
       const feature = new Feature({
         geometry: new Point(fromLonLat(sourceCoords)),
         segmentIndex: index,
         mode: mappedMode, // Use the mapped mode for consistency
-        path: segment.points && segment.points.coordinates ? 
-          segment.points.coordinates.map(coord => fromLonLat(coord)) : 
-          [fromLonLat(sourceCoords)], // Fallback to a single point if coordinates not available
-        pathLength: segment.points && segment.points.coordinates ? 
-          segment.points.coordinates.length : 1,
+        path: segment.points ? 
+          segment.points.map(coord => fromLonLat(coord)) : 
+          [fromLonLat(sourceCoords)], // Fallback to a single point if points not available
+        pathLength: segment.points ? 
+          segment.points.length : 1,
         progress: 0, // Track animation progress (0-1)
         isActive: false, // Track if this segment is currently animating
         iconSvg: iconSvg, // Store the SVG string for later style updates
@@ -140,8 +140,7 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       
       // If it's the first segment and it's a flight, calculate initial rotation
       if (isFirstSegment && mappedMode === 'flight' && 
-          segment.points && segment.points.coordinates && 
-          segment.points.coordinates.length > 1) {
+          segment.points && segment.points.length > 1) {
         const path = feature.get('path');
         const initialRotation = calculateAngle(path[0], path[1]);
         feature.setStyle(createIconStyle(iconSvg, isFirstSegment, initialRotation));

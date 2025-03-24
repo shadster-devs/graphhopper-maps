@@ -76,17 +76,12 @@ export default function useStaticTransportIcons(map: Map, selectedPath: Segmente
     
     // Add an icon for each segment in the middle of the path
     selectedPath.segments.forEach((segment) => {
-      // Determine coordinates for the icon - either from segment points or directly from source/destination
+      // Determine coordinates for the icon from segment points
       let coordinates: number[][] = [];
       
-      if (segment.points && segment.points.coordinates && segment.points.coordinates.length > 0) {
+      if (segment.points && segment.points.length > 0) {
         // Use existing points if available
-        coordinates = segment.points.coordinates.map(coord => fromLonLat(coord));
-      } else if (segment.source && segment.source.geo && segment.destination && segment.destination.geo) {
-        // If no points but we have source and destination with geo, create a direct line
-        const srcCoord = fromLonLat([segment.source.geo.lng, segment.source.geo.lat]);
-        const destCoord = fromLonLat([segment.destination.geo.lng, segment.destination.geo.lat]);
-        coordinates = [srcCoord, destCoord];
+        coordinates = segment.points.map(coord => fromLonLat(coord));
       }
       
       // Only proceed if we have coordinates

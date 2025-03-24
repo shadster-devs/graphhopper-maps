@@ -268,29 +268,28 @@ export class ApiImpl implements Api {
                 result.data.routes.forEach(route => {
                     route.segments.forEach(segment => {
                         // If no points are provided, create a line between source and destination
-                        if (!segment.points && segment.source.geo && segment.destination.geo) {
-                            // Create a LineString with enough points for proper icon placement
-                            // For simplicity, we'll create 5 points along a straight line between source and destination
-                            const srcLng = segment.source.geo.lng;
-                            const srcLat = segment.source.geo.lat;
-                            const destLng = segment.destination.geo.lng;
-                            const destLat = segment.destination.geo.lat;
+                        if (!segment.points && segment.source_sts && segment.destination_sts) {
+                            // Create a simple array of lon,lat points for proper icon placement
+                            const sourceId = segment.source_sts.id;
+                            const destId = segment.destination_sts.id;
                             
-                            // Calculate intermediate points
+                            // For now, we'll create 5 points in a straight line between stations
+                            // Actual coordinates need to be fetched from a different source
+                            // This is just placeholder code until we have the real coordinates
+                            // Create some placeholder points in a line
                             const coordinates = [];
                             const numPoints = 5;
                             
-                            for (let i = 0; i < numPoints; i++) {
+                            // Default to 0,0 coordinates if we don't have proper data
+                            // In production, these coordinates should be provided by the API
+                            coordinates.push([0, 0]);
+                            for (let i = 1; i < numPoints-1; i++) {
                                 const ratio = i / (numPoints - 1);
-                                const lng = srcLng + ratio * (destLng - srcLng);
-                                const lat = srcLat + ratio * (destLat - srcLat);
-                                coordinates.push([lng, lat, 0]);
+                                coordinates.push([ratio, ratio]);
                             }
+                            coordinates.push([1, 1]);
                             
-                            segment.points = {
-                                type: 'LineString',
-                                coordinates: coordinates
-                            } as LineString;
+                            segment.points = coordinates;
                         }
                     });
                 });

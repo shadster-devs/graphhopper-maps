@@ -154,16 +154,42 @@ const calculateBBox = (path: SegmentedPath): Bbox => {
     let maxLon = -180;
     let maxLat = -90;
     
+    // Check if path has any segments
+    if (!path.segments || path.segments.length === 0) {
+        // Return a small default area if no segments found
+        return [0, 0, 0.01, 0.01]; // Small area to prevent empty extent errors
+    }
+    
+    let hasValidCoordinates = false;
+    
     path.segments.forEach((segment: Segment) => {
-        if (segment.points && segment.points.coordinates) {
-            segment.points.coordinates.forEach((coord: number[]) => {
-                minLon = Math.min(minLon, coord[0]);
-                minLat = Math.min(minLat, coord[1]);
-                maxLon = Math.max(maxLon, coord[0]);
-                maxLat = Math.max(maxLat, coord[1]);
+        if (segment.points && segment.points.length > 0) {
+            segment.points.forEach((coord: number[]) => {
+                if (coord.length >= 2) {
+                    hasValidCoordinates = true;
+                    minLon = Math.min(minLon, coord[0]);
+                    minLat = Math.min(minLat, coord[1]);
+                    maxLon = Math.max(maxLon, coord[0]);
+                    maxLat = Math.max(maxLat, coord[1]);
+                }
             });
         }
     });
+    
+    // If no valid coordinates were found, return a default area
+    if (!hasValidCoordinates) {
+        return [0, 0, 0.01, 0.01];
+    }
+    
+    // Add a small buffer if the bbox is too small
+    if (maxLon - minLon < 0.001) {
+        minLon -= 0.001;
+        maxLon += 0.001;
+    }
+    if (maxLat - minLat < 0.001) {
+        minLat -= 0.001;
+        maxLat += 0.001;
+    }
     
     // Return the bbox in the expected format
     return [minLon, minLat, maxLon, maxLat];

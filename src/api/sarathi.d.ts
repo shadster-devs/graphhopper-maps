@@ -1,4 +1,3 @@
-import { LineString } from 'geojson'
 import { TRANSPORT_MODES } from '@/constants/TransportModes'
 
 // Type for transport modes
@@ -27,10 +26,7 @@ export interface Location {
     id: string
     sid: number
     type: number
-    geo?: {
-        lat: number
-        lng: number
-    }
+    // geo field has been removed as it is no longer present in the response
 }
 
 // Segment definition for each part of a journey
@@ -48,7 +44,7 @@ export interface Segment {
     destination_sts: Location
     vendor: number
     travelDate: number
-    points?: LineString
+    points: number[][] // Changed from LineString to array of [long, lat] coordinates
 }
 
 // Path definition (a complete route)

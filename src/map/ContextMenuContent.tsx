@@ -55,8 +55,8 @@ export function ContextMenuContent({
                 // Flatten all segment coordinates into a single array
                 const allCoordinates: Position[] = [];
                 path.segments.forEach(segment => {
-                    if (segment.points && segment.points.coordinates) {
-                        allCoordinates.push(...segment.points.coordinates);
+                    if (segment.points && segment.points.length > 0) {
+                        allCoordinates.push(...segment.points);
                     }
                 });
                 
@@ -124,16 +124,16 @@ export function ContextMenuContent({
 // Add a function to calculate distance from point to segment
 function distancePointToSegment(point: Coordinate, segment: Segment): number {
     // If segment doesn't have points, return a large distance
-    if (!segment || !segment.points || !segment.points.coordinates || segment.points.coordinates.length < 2) {
+    if (!segment || !segment.points || segment.points.length < 2) {
         return Number.MAX_VALUE;
     }
     
     // Calculate the minimum distance from point to any segment of the path
     let minDistance = Number.MAX_VALUE;
     
-    for (let i = 0; i < segment.points.coordinates.length - 1; i++) {
-        const start = segment.points.coordinates[i];
-        const end = segment.points.coordinates[i + 1];
+    for (let i = 0; i < segment.points.length - 1; i++) {
+        const start = segment.points[i];
+        const end = segment.points[i + 1];
         
         // Calculate distance from point to line segment
         const distance = distanceToLineSegment(
