@@ -14,15 +14,11 @@ import { Settings } from '@/stores/SettingsStore';
 // Layer key for animations
 const animationLayerKey = 'animationLayer';
 
-const UNIFORM_SPEED_FACTOR = 2;
-
-const BASE_SEGMENT_DURATION = 5000;
-
 /**
  * Creates a style for a transport mode icon
  * @param iconSvg The SVG string for the icon
  * @param visible Whether the icon should be visible
- * @param rotation Rotation angle in radians (for flight icon)
+ * @param rotation Rotation angle in radians (for flights icon)
  * @returns A style object for the icon
  */
 function createIconStyle(iconSvg: string, visible: boolean, rotation: number = 0): Style {
@@ -36,7 +32,7 @@ function createIconStyle(iconSvg: string, visible: boolean, rotation: number = 0
       src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cleanSvg)}`,
       scale: 1.5,
       opacity: visible ? 1 : 0, // Set opacity based on visibility
-      rotation: rotation, // Apply rotation for flight icon
+      rotation: rotation, // Apply rotation for flights icon
     }),
   });
 }
@@ -109,7 +105,7 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       let mappedMode = normalizedMode;
       
       // Map Sarathi API enum values to our local values
-      if (normalizedMode === 'flights') mappedMode = 'flight';
+      if (normalizedMode === 'flights') mappedMode = 'flights';
       if (normalizedMode === 'rails') mappedMode = 'train';
       
       // Render the icon to string using the mapped mode
@@ -138,8 +134,8 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       // Initially all icons are hidden except the first one
       const isFirstSegment = index === 0;
       
-      // If it's the first segment and it's a flight, calculate initial rotation
-      if (isFirstSegment && mappedMode === 'flight' && 
+      // If it's the first segment and it's a flights, calculate initial rotation
+      if (isFirstSegment && mappedMode === 'flights' && 
           segment.points && segment.points.length > 1) {
         const path = feature.get('path');
         const initialRotation = calculateAngle(path[0], path[1]);
@@ -157,8 +153,8 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
       features[0].set('isActive', true);
       features[0].set('activationTime', Date.now());
       
-      // Set proper initial rotation for first segment if it's a flight
-      if (features[0].get('mode') === 'flight') {
+      // Set proper initial rotation for first segment if it's a flights
+      if (features[0].get('mode') === 'flights') {
         const path = features[0].get('path');
         if (path && path.length > 1) {
           const initialRotation = calculateAngle(path[0], path[1]);
@@ -208,8 +204,8 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
         features[0].set('isActive', true);
         features[0].set('activationTime', Date.now());
         
-        // Set proper initial rotation if it's a flight
-        if (features[0].get('mode') === 'flight') {
+        // Set proper initial rotation if it's a flights
+        if (features[0].get('mode') === 'flights') {
           const path = features[0].get('path');
           if (path && path.length > 1) {
             const initialRotation = calculateAngle(path[0], path[1]);
@@ -232,7 +228,12 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
         }
         
         const mode = feature.get('mode');
-        const path = feature.get('path');
+        let path = feature.get('path');
+
+        if (mode === 'flights') {
+          const curvedPath = createBezierLineString(path[0], path[path.length - 1]);
+          path = curvedPath;
+        }
         
         if (path.length < 2) {
           return; // Skip animation if there's no path to follow
@@ -294,7 +295,7 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
           geometry.setCoordinates(currentPosition);
           
           // Calculate rotation angle for the icon (direction of travel)
-          if (mode === 'flight') {
+          if (mode === 'flights') {
             // For flights, always point in direction of overall travel
             const startPoint = path[segmentStart];
             const endPoint = path[segmentEnd]; 
@@ -314,11 +315,11 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
             features[index + 1].set('isActive', true);
             features[index + 1].set('activationTime', Date.now());
             
-            // Set initial rotation for flight segments
+            // Set initial rotation for flights segments
             const nextMode = features[index + 1].get('mode');
             const nextPath = features[index + 1].get('path');
             
-            if (nextMode === 'flight' && nextPath.length >= 2) {
+            if (nextMode === 'flights' && nextPath.length >= 2) {
               const initialRotation = calculateAngle(nextPath[0], nextPath[1]);
               updateFeatureVisibility(features[index + 1], true, initialRotation);
             } else {
@@ -357,7 +358,7 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
                   features[0].set('isActive', true);
                   features[0].set('activationTime', Date.now());
                   
-                  if (firstMode === 'flight' && firstPath.length >= 2) {
+                  if (firstMode === 'flights' && firstPath.length >= 2) {
                     const initialRotation = calculateAngle(firstPath[0], firstPath[1]);
                     updateFeatureVisibility(features[0], true, initialRotation);
                   } else {
@@ -400,3 +401,47 @@ export default function usePathAnimations(map: Map, selectedPath: SegmentedPath,
 
   return null;
 } 
+
+function createBezierLineString(start: number[], end: number[]): number[][] {
+  const distanceValue = Math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2);
+  const midX = (start[0] + end[0]) / 2;
+  const midY = (start[1] + end[1]) / 2;
+
+  // Adaptive Bezier Height: Less for short distances, more for long
+  const bezierHeight = Math.min(distanceValue * 0.2, Math.max(40, distanceValue * 0.1));
+
+  // Calculate perpendicular offset for the curve
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  let offsetX = (dy / length) * bezierHeight;
+  let offsetY = (-dx / length) * bezierHeight;
+
+  // If moving rightward, reverse the curve
+  if (end[0] > start[0]) {
+      offsetX = -offsetX;
+      offsetY = -offsetY;
+  }
+
+  // Adjust control point dynamically
+  const controlX = midX + offsetX;
+  const controlY = midY + offsetY;
+
+  const points: number[][] = [];
+  for (let i = 0; i <= 100; i += 5) {
+      const t = i / 100;
+      const s = 1 - t;
+
+      const x = s * s * start[0] + 2 * s * t * controlX + t * t * end[0];
+      const y = s * s * start[1] + 2 * s * t * controlY + t * t * end[1];
+      points.push([x, y]);
+  }
+
+  // Ensure last point is exactly at the endpoint
+  if (points[points.length - 1][0] !== end[0] || points[points.length - 1][1] !== end[1]) {
+      points.push(end);
+  }
+
+  return points;
+}

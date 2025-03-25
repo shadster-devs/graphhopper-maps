@@ -139,7 +139,7 @@ function RoutingResult({
         if (uniqueModes.length === 1) {
             const mode = uniqueModes[0]?.toUpperCase() || '';
             
-            if (mode === 'FLIGHTS' || mode === 'FLIGHT') return "Direct Flight";
+            if (mode === 'FLIGHTS' || mode === 'FLIGHTS') return "Direct Flight";
             if (mode === 'RAILS' || mode === 'RAIL' || mode === 'TRAIN') return "Direct Train";
             if (mode === 'BUS') return "Direct Bus";
             if (mode === 'CAB' || mode === 'TAXI') return "Direct Taxi";
@@ -149,7 +149,7 @@ function RoutingResult({
         // Multiple modes, create a "Via" route name
         return "Via " + uniqueModes.map(mode => {
             const m = mode?.toUpperCase() || '';
-            if (m === 'FLIGHTS' || m === 'FLIGHT') return "Flight";
+            if (m === 'FLIGHTS' || m === 'FLIGHTS') return "Flight";
             if (m === 'RAILS' || m === 'RAIL' || m === 'TRAIN') return "Train";
             if (m === 'BUS') return "Bus";
             if (m === 'CAB' || m === 'TAXI') return "Taxi";

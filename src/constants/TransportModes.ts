@@ -74,7 +74,7 @@ export function getTransportModeColor(mode: string, isSelected: boolean): string
     let modeKey: keyof typeof TRANSPORT_MODE_COLORS;
     switch (normalizedMode) {
         case 'FLIGHTS':
-        case 'FLIGHT':
+        case 'FLIGHTS':
             modeKey = 'FLIGHTS';
             break;
         case 'RAILS':
@@ -106,7 +106,7 @@ export function getTransportModeDash(mode: string): number[] {
     let modeKey: keyof typeof TRANSPORT_MODE_DASH_PATTERNS;
     switch (normalizedMode) {
         case 'FLIGHTS':
-        case 'FLIGHT':
+        case 'FLIGHTS':
             modeKey = 'FLIGHTS';
             break;
         case 'RAILS':
@@ -137,7 +137,7 @@ export function getTransportModeWidth(mode: string, isSelected: boolean): number
     let modeKey: keyof typeof TRANSPORT_MODE_WIDTHS;
     switch (normalizedMode) {
         case 'FLIGHTS':
-        case 'FLIGHT':
+        case 'FLIGHTS':
             modeKey = 'FLIGHTS';
             break;
         case 'RAILS':

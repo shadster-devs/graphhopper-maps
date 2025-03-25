@@ -17,7 +17,7 @@ export const getTransportIcon = (mode: string): React.ReactNode => {
   
   switch (normalizedMode) {
     case 'FLIGHTS':
-    case 'FLIGHT':
+    case 'FLIGHTS':
       return <FlightIcon />;
     case 'RAILS':
     case 'RAIL':

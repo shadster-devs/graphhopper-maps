@@ -18,7 +18,7 @@ const staticIconsLayerKey = 'staticIconsLayer';
 /**
  * Creates a style for a transport mode icon
  * @param iconSvg The SVG string for the icon
- * @param rotation Rotation angle in radians (for flight icon)
+ * @param rotation Rotation angle in radians (for flights icon)
  * @returns A style object for the icon
  */
 function createStaticIconStyle(iconSvg: string, rotation: number = 0): Style {
@@ -26,7 +26,7 @@ function createStaticIconStyle(iconSvg: string, rotation: number = 0): Style {
     image: new Icon({
       src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`,
       scale: 1.5, // Changed from 2.5 to make icons significantly smaller
-      rotation: rotation, // Apply rotation for flight icon
+      rotation: rotation, // Apply rotation for flights icon
     }),
   });
 }
@@ -91,7 +91,7 @@ export default function useStaticTransportIcons(map: Map, selectedPath: Segmente
         let mappedMode = normalizedMode;
         
         // Map Sarathi API enum values to our local values
-        if (normalizedMode === 'flights') mappedMode = 'flight';
+        if (normalizedMode === 'flights') mappedMode = 'flights';
         if (normalizedMode === 'rails') mappedMode = 'train';
         
         // Render the icon to string using the mapped mode
@@ -124,9 +124,9 @@ export default function useStaticTransportIcons(map: Map, selectedPath: Segmente
             geometry: new Point(midPoint),
           });
           
-          // Calculate rotation for flight segments
+          // Calculate rotation for flights segments
           let rotation = 0;
-          if (mappedMode === 'flight' && coordinates.length >= 2) {
+          if (mappedMode === 'flights' && coordinates.length >= 2) {
             // For flights, get the angle between start and end points
             const startPoint = coordinates[0];
             const endPoint = coordinates[coordinates.length - 1];

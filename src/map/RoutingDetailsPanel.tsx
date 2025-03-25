@@ -75,7 +75,7 @@ const RoutingDetailsPanel: React.FC<RoutingDetailsPanelProps> = ({
         
         const normalizedMode = mode.toUpperCase();
         
-        if (normalizedMode.includes('FLIGHT')) {
+        if (normalizedMode.includes('FLIGHTS')) {
             return `rgba(60, 130, 246, 0.15)`; // Flight: Light blue background
         } else if (normalizedMode.includes('TRAIN') || normalizedMode.includes('RAIL')) {
             return `rgba(16, 185, 129, 0.15)`; // Train: Light green background
@@ -158,7 +158,7 @@ const RoutingDetailsPanel: React.FC<RoutingDetailsPanelProps> = ({
                                                 {getTransportIcon(segment.mode)}
                                             </span>
                                             <span className={styles.serviceCount}>
-                                                {segment.mode?.toLowerCase().includes('flight') ? '215+ Flight services' : 
+                                                {segment.mode?.toLowerCase().includes('flights') ? '215+ Flight services' : 
                                                  segment.mode?.toLowerCase().includes('train') ? '180+ Train services' : 
                                                  segment.mode?.toLowerCase().includes('bus') ? '75+ Bus services' : 
                                                  segment.mode?.toLowerCase().includes('taxi') || segment.mode?.toLowerCase().includes('cab') ? 'Taxi services' : 
@@ -188,7 +188,7 @@ const RoutingDetailsPanel: React.FC<RoutingDetailsPanelProps> = ({
                                                 rel="noopener noreferrer" 
                                                 className={styles.bookButton}
                                             >
-                                                {segment.mode?.toLowerCase().includes('flight') ? 'BOOK FLIGHT' : 
+                                                {segment.mode?.toLowerCase().includes('flights') ? 'BOOK FLIGHTS' : 
                                                  segment.mode?.toLowerCase().includes('train') ? 'BOOK TRAIN' :
                                                  segment.mode?.toLowerCase().includes('bus') ? 'BOOK BUS' :
                                                  segment.mode?.toLowerCase().includes('taxi') ? 'BOOK TAXI' :

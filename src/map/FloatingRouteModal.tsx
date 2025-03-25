@@ -134,7 +134,7 @@ const FloatingRouteModal: React.FC<FloatingRouteModalProps> = ({
                                         <div className={styles.serviceInfo}>
                                             <span className={styles.inlineIcon}>{getTransportIcon(segment.mode)}</span>
                                             <span className={styles.serviceCount}>
-                                                {segment.mode?.toLowerCase().includes('flight') ? '215+ Flight services' : 
+                                                {segment.mode?.toLowerCase().includes('flights') ? '215+ Flight services' : 
                                                  segment.mode?.toLowerCase().includes('train') ? '180+ Train services' : 
                                                  segment.mode?.toLowerCase().includes('bus') ? '75+ Bus services' : 
                                                  segment.mode?.toLowerCase().includes('taxi') || segment.mode?.toLowerCase().includes('cab') ? 'Taxi services' : 
@@ -164,7 +164,7 @@ const FloatingRouteModal: React.FC<FloatingRouteModalProps> = ({
                                                 rel="noopener noreferrer" 
                                                 className={styles.bookButton}
                                             >
-                                                {segment.mode?.toLowerCase().includes('flight') ? 'BOOK FLIGHT' : 
+                                                {segment.mode?.toLowerCase().includes('flights') ? 'BOOK FLIGHTS' : 
                                                  segment.mode?.toLowerCase().includes('train') ? 'BOOK TRAIN' :
                                                  segment.mode?.toLowerCase().includes('bus') ? 'BOOK BUS' :
                                                  segment.mode?.toLowerCase().includes('taxi') ? 'BOOK TAXI' :

@@ -368,7 +368,7 @@ function TransportModeLegend({ route }: { route: RouteStoreState }) {
         // Get the modes and normalize them to our standard keys
         const modes = route.selectedPath.segments.map(segment => {
             const mode = segment.mode?.toUpperCase() || '';
-            if (mode === 'FLIGHTS' || mode === 'FLIGHT') return 'FLIGHTS';
+            if (mode === 'FLIGHTS' || mode === 'FLIGHTS') return 'FLIGHTS';
             if (mode === 'RAILS' || mode === 'RAIL' || mode === 'TRAIN') return 'RAILS';
             if (mode === 'BUS') return 'BUS';
             if (mode === 'CAB' || mode === 'TAXI') return 'CAB';
