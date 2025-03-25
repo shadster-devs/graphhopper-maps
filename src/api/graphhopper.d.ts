@@ -6,9 +6,6 @@ export type Bbox = [number, number, number, number]
 
 export interface RoutingArgs {
     readonly points: [number, number][]
-    readonly profile: string
-    readonly maxAlternativeRoutes: number
-    readonly customModel: CustomModel | null
     readonly sarathiSourceLocation?: SarathiLocation
     readonly sarathiDestLocation?: SarathiLocation
 }

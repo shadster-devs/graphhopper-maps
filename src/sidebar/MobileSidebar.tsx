@@ -58,22 +58,6 @@ export default function ({ query, route, error, encodedValues, drawAreas, map }:
                         <div className={styles.btnCloseInputs} onClick={() => setIsSmallSearchView(true)}>
                             <CloseInputsIcon />
                         </div>
-                        <RoutingProfiles
-                            routingProfiles={query.profiles}
-                            selectedProfile={query.routingProfile}
-                            showCustomModelBox={showCustomModelBox}
-                            toggleCustomModelBox={() => setShowCustomModelBox(!showCustomModelBox)}
-                            customModelBoxEnabled={query.customModelEnabled}
-                        />
-                        {showCustomModelBox && (
-                            <CustomModelBox
-                                customModelEnabled={query.customModelEnabled}
-                                encodedValues={encodedValues}
-                                customModelStr={query.customModelStr}
-                                queryOngoing={query.currentRequest.subRequests[0]?.state === RequestState.SENT}
-                                drawAreas={drawAreas}
-                            />
-                        )}
                         <Search points={query.queryPoints} map={map} />
                     </div>
                 )}

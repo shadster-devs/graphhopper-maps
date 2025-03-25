@@ -64,6 +64,25 @@ const osmOrg: RasterStyle = {
     attribution: osmAttribution,
     maxZoom: 19,
 }
+const stadiaMapOutdoors: RasterStyle = {
+    name: 'StadiaMapsOutdoors',
+    type: 'raster',
+    url: ['https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}@2x.png'],
+    attribution: osmAttribution + ', &copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>',
+    maxZoom: 19,
+    tilePixelRatio: 2,
+}
+
+const stadiaMapsOSMBright: RasterStyle = {
+    name: 'StadiaMapsOSMBright',
+    type: 'raster',
+    url: ['https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}@2x.png'],
+    attribution: osmAttribution + ', &copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>',
+    maxZoom: 19,
+    tilePixelRatio: 2,
+}
+
+{
 const osmCycl: RasterStyle = {
     name: 'Cyclosm',
     type: 'raster',
@@ -179,20 +198,23 @@ const wanderreitkarte: RasterStyle = {
     attribution: osmAttribution + ', <a href="https://wanderreitkarte.de" target="_blank">WanderReitKarte</a>',
     maxZoom: 18,
 }
-
+}
+//</editor-fold>
 const styleOptions: StyleOption[] = [
-    omniscale,
     osmOrg,
-    osmCycl,
-    esriSatellite,
     mapTilerSatellite,
-    tfTransport,
-    tfCycle,
-    tfOutdoors,
-    kurviger,
-    mapillion,
-    lyrk,
-    wanderreitkarte,
+    stadiaMapOutdoors,
+    stadiaMapsOSMBright,
+    // omniscale,
+    // osmCycl,
+    // esriSatellite,
+    // tfTransport,
+    // tfCycle,
+    // tfOutdoors,
+    // kurviger,
+    // mapillion,
+    // lyrk,
+    // wanderreitkarte,
 ]
 
 export default class MapOptionsStore extends Store<MapOptionsStoreState> {
@@ -207,7 +229,7 @@ export default class MapOptionsStore extends Store<MapOptionsStoreState> {
                 `Could not find tile layer specified in config: '${config.defaultTiles}', using default instead`
             )
         return {
-            selectedStyle: selectedStyle ? selectedStyle : omniscale,
+            selectedStyle: selectedStyle ? selectedStyle : osmOrg,
             styleOptions,
             routingGraphEnabled: false,
             urbanDensityEnabled: false,

@@ -18,7 +18,6 @@ export interface RoutingResultsProps {
     paths: SegmentedPath[]
     selectedPath: SegmentedPath
     currentRequest: CurrentRequest
-    profile: string
 }
 
 export default function RoutingResults(props: RoutingResultsProps) {
@@ -34,11 +33,9 @@ export default function RoutingResults(props: RoutingResultsProps) {
 function RoutingResult({
     path,
     isSelected,
-    profile,
 }: {
     path: SegmentedPath
     isSelected: boolean
-    profile: string
 }) {
     const [isExpanded, setExpanded] = useState(false)
     const resultSummaryClass = isSelected
@@ -333,9 +330,6 @@ function getLength(paths: SegmentedPath[], subRequests: SubRequest[]) {
         // otherwise it can happen that too fast alternatives reject the main request leading to stale placeholders
         return Math.max(
             paths.length,
-            ...subRequests
-                .filter(request => request.state === RequestState.SENT)
-                .map(request => request.args.maxAlternativeRoutes)
         )
     }
     return paths.length
@@ -348,7 +342,7 @@ function createSingletonListContent(props: RoutingResultsProps) {
     return ''
 }
 
-function createListContent({ paths, currentRequest, selectedPath, profile }: RoutingResultsProps) {
+function createListContent({ paths, currentRequest, selectedPath,  }: RoutingResultsProps) {
     const length = getLength(paths, currentRequest.subRequests)
     const result = []
 
@@ -359,7 +353,6 @@ function createListContent({ paths, currentRequest, selectedPath, profile }: Rou
                     key={i}
                     path={paths[i]}
                     isSelected={paths[i] === selectedPath}
-                    profile={profile}
                 />
             )
         else result.push(<RoutingResultPlaceholder key={i} />)

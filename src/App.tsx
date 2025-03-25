@@ -460,7 +460,6 @@ function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues
                                 paths={route.routingResult.data.routes}
                                 selectedPath={route.selectedPath}
                                 currentRequest={query.currentRequest}
-                                profile={query.routingProfile.name}
                             />
                         </div>
                     </div>
@@ -478,6 +477,7 @@ function LargeScreenLayout({ query, route, map, error, mapOptions, encodedValues
                 {/* Map container with rounded corners */}
                 <div className={styles.mapContainer}>
                     <MapComponent map={map} />
+                    <MapOptions {...mapOptions} />
                 </div>
 
                  {/* Routing details panel positioned above the map */}

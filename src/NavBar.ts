@@ -37,10 +37,7 @@ export default class NavBar {
                 .forEach(pointAsString => result.searchParams.append('point', pointAsString))
         }
 
-        result.searchParams.append('profile', queryStoreState.routingProfile.name)
         result.searchParams.append('layer', mapState.selectedStyle.name)
-        if (queryStoreState.customModelEnabled)
-            result.searchParams.append('custom_model', queryStoreState.customModelStr.replace(/\s+/g, ''))
         
         // Add path display mode to the URL if it's not the default
         const settings = getSettingsStore().state;

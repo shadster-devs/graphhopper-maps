@@ -33,12 +33,9 @@ export function getBBoxFromCoord(c: Coordinate, offset: number = 0.005): Bbox {
 }
 
 export interface QueryStoreState {
-    readonly profiles: RoutingProfile[]
     readonly queryPoints: QueryPoint[]
     readonly nextQueryPointId: number
     readonly currentRequest: CurrentRequest
-    readonly maxAlternativeRoutes: number
-    readonly routingProfile: RoutingProfile
     readonly customModelEnabled: boolean
     readonly customModelStr: string
 }
@@ -107,7 +104,6 @@ export default class QueryStore extends Store<QueryStoreState> {
         } catch (e) {}
 
         return {
-            profiles: [],
             queryPoints: [
                 QueryStore.getEmptyPoint(0, QueryPointType.From),
                 QueryStore.getEmptyPoint(1, QueryPointType.To),
@@ -115,10 +111,6 @@ export default class QueryStore extends Store<QueryStoreState> {
             nextQueryPointId: 2,
             currentRequest: {
                 subRequests: [],
-            },
-            maxAlternativeRoutes: 3,
-            routingProfile: {
-                name: '',
             },
             customModelEnabled: customModelEnabledInitially,
             customModelStr: initialCustomModelStr,
@@ -262,19 +254,15 @@ export default class QueryStore extends Store<QueryStoreState> {
                 : action.result.profiles
 
             // if a routing profile was in the url keep it, otherwise select the first entry as default profile
-            const profile = state.routingProfile.name ? state.routingProfile : profiles[0]
             return this.routeIfReady(
                 {
                     ...state,
-                    profiles,
-                    routingProfile: profile,
                 },
                 true
             )
         } else if (action instanceof SetVehicleProfile) {
             const newState: QueryStoreState = {
                 ...state,
-                routingProfile: action.profile,
             }
 
             return this.routeIfReady(newState, true)
@@ -324,7 +312,6 @@ export default class QueryStore extends Store<QueryStoreState> {
                     requests = [
                         QueryStore.buildRouteRequest({
                             ...state,
-                            maxAlternativeRoutes: 1,
                         }),
                     ]
                 } else {
@@ -346,17 +333,8 @@ export default class QueryStore extends Store<QueryStoreState> {
                     // We first send a fast request without alternatives ...
                     QueryStore.buildRouteRequest({
                         ...state,
-                        maxAlternativeRoutes: 1,
                     }),
                 ]
-                // ... and then a second, slower request including alternatives if they are enabled.
-                if (
-                    state.queryPoints.length === 2 &&
-                    state.maxAlternativeRoutes > 1 &&
-                    ((ApiImpl.isMotorVehicle(state.routingProfile.name) && maxDistance < 7_000_000) ||
-                        maxDistance < 500_000)
-                )
-                    requests.push(QueryStore.buildRouteRequest(state))
             }
 
             return {
@@ -389,7 +367,6 @@ export default class QueryStore extends Store<QueryStoreState> {
         // Janek deliberately chose this style of if statements, to make this readable.
         if (state.queryPoints.length <= 1) return false
         if (!state.queryPoints.every(point => point.isInitialized)) return false
-        if (!state.routingProfile.name) return false
 
         return true
     }
@@ -451,11 +428,6 @@ export default class QueryStore extends Store<QueryStoreState> {
             number
         ][]
 
-        let customModel = null
-        if (state.customModelEnabled)
-            try {
-                customModel = JSON.parse(state.customModelStr)
-            } catch {}
 
         // Extract Sarathi location data from the first and last query points if available
         const fromPoint = state.queryPoints[0];
@@ -464,9 +436,6 @@ export default class QueryStore extends Store<QueryStoreState> {
         // Build the complete request object with all fields at once to handle readonly properties
         return {
             points: coordinates,
-            profile: state.routingProfile.name,
-            maxAlternativeRoutes: state.maxAlternativeRoutes,
-            customModel: customModel,
             sarathiSourceLocation: fromPoint?.sarathiLocation,
             sarathiDestLocation: toPoint?.sarathiLocation
         };

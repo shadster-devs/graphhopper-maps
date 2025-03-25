@@ -1,9 +1,12 @@
 .mapOptionsContainer {
     position: absolute;
     z-index: 2;
-    top: 10px;
+    top: 80px;
     right: 10px;
     display: flex;
+    border-radius: 10px;
+    background-color: white;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 
 .options {
