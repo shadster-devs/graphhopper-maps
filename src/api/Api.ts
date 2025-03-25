@@ -44,7 +44,7 @@ export default interface Api {
 }
 
 export function setApi(routingApi: string, geocodingApi: string, apiKey: string) {
-    api = new ApiImpl(routingApi, geocodingApi, apiKey)
+    api = new ApiImpl(apiKey)
 }
 
 export function getApi() {
@@ -57,36 +57,36 @@ export function getApi() {
  */
 export class ApiImpl implements Api {
     private readonly apiKey: string
-    private readonly routingApi: string
     private readonly sarathiRoutesApi: string
     private readonly sarathiSearchApi: string
     private readonly geocodingApi: string
     private routeCounter = 0
     private lastRouteNumber = -1
 
-    constructor(routingApi: string, geocodingApi: string, apiKey: string) {
-        this.routingApi = routingApi
-        this.geocodingApi = geocodingApi
+    constructor(apiKey: string) {
         this.apiKey = apiKey
+        this.geocodingApi = ''
         this.sarathiRoutesApi = 'http://10.212.32.230:50060/routeplanner/routes' 
         this.sarathiSearchApi = 'http://10.212.32.230:50091/routeplanner/location/search'
     }
 
     async info(): Promise<ApiInfo> {
-        const response = await fetch(this.getRoutingURLWithKey('info').toString(), {
-            headers: { Accept: 'application/json' },
-        }).catch(() => {
-            throw new Error('Could not connect to the Service. Try to reload!')
-        })
-
-        const result = await response.json()
-        if (response.ok) {
-            return ApiImpl.convertToApiInfo(result)
-        } else {
-            if (result.message) throw new Error(result.message)
-            throw new Error(
-                'There has been an error. Server responded with ' + response.statusText + ' (' + response.status + ')'
-            )
+        try {
+            // Create a simplified API info response since we're not using GraphHopper anymore
+            // You might want to adapt this with actual capabilities from your Sarathi API if needed
+            return {
+                profiles: [
+                    { name: 'car' },
+                    { name: 'bike' },
+                    { name: 'foot' }
+                ],
+                elevation: true,
+                bbox: [72.5, 8.0, 97.5, 36.0] as Bbox, // Approximate bbox for India
+                version: 'Sarathi 1.0',
+                encoded_values: []
+            };
+        } catch (error) {
+            throw new Error('Could not retrieve API information: ' + error);
         }
     }
 
@@ -326,168 +326,10 @@ export class ApiImpl implements Api {
             });
     }
 
-    private getRoutingURLWithKey(endpoint: string) {
-        const url = new URL(this.routingApi + endpoint)
-        url.searchParams.append('key', this.apiKey)
-        return url
-    }
-
     private getGeocodingURLWithKey(endpoint: string) {
         const url = new URL(this.geocodingApi + endpoint)
         url.searchParams.append('key', this.apiKey)
         return url
-    }
-
-    static createRequest(args: RoutingArgs): RoutingRequest {
-        let profileConfig = config.profiles ? (config.profiles as any)[args.profile] : {}
-        let details = config.request?.details ? config.request.details : []
-        // don't query all path details for all profiles (e.g. foot_network and get_off_bike are not enabled for motor vehicles)
-        if (profileConfig?.details) details = [...details, ...profileConfig.details] // don't modify original arrays!
-
-        const request: RoutingRequest = {
-            points: args.points,
-            profile: args.profile,
-            elevation: true,
-            instructions: true,
-            locale: getTranslation().getLang(),
-            points_encoded: true,
-            points_encoded_multiplier: 1e6,
-            ...profileConfig,
-            details: details,
-        }
-
-        if (config.request?.snapPreventions) request.snap_preventions = config.request?.snapPreventions
-
-        if (args.customModel) {
-            request.custom_model = args.customModel
-            request['ch.disable'] = true
-            request['timeout_ms'] = 10000
-        }
-
-        if (
-            args.points.length <= 2 &&
-            args.maxAlternativeRoutes > 1 &&
-            !(request as any)['curbsides'] &&
-            !args.profile.startsWith('cp_')
-        ) {
-            return {
-                ...request,
-                timeout_ms: 10000,
-                'alternative_route.max_paths': args.maxAlternativeRoutes,
-                algorithm: 'alternative_route',
-            }
-        }
-        return request
-    }
-
-    static convertToApiInfo(response: any): ApiInfo {
-        let bbox = [0, 0, 0, 0] as Bbox
-        let version = ''
-        const profiles: RoutingProfile[] = []
-
-        for (const profileIndex in response.profiles as ApiProfile[]) {
-            const profile: RoutingProfile = {
-                name: response.profiles[profileIndex].name,
-            }
-
-            profiles.push(profile)
-        }
-
-        for (const property in response) {
-            if (property === 'bbox') bbox = response[property]
-            else if (property === 'version') version = response[property]
-        }
-
-        return {
-            profiles: profiles,
-            elevation: response.elevation,
-            bbox: bbox,
-            version: version,
-            encoded_values: response.encoded_values,
-        }
-    }
-
-    private static decodeResult(result: RawResult, is3D: boolean) {
-        return result.paths
-            .map((path: RawPath) => {
-                return {
-                    ...path,
-                    points: ApiImpl.decodePoints(path, is3D),
-                    snapped_waypoints: ApiImpl.decodeWaypoints(path, is3D),
-                } as Path
-            })
-            .map((path: Path) => {
-                return {
-                    ...path,
-                }
-            })
-    }
-
-    private static decodePoints(path: RawPath, is3D: boolean) {
-        if (path.points_encoded) {
-            const multiplier = path.points_encoded_multiplier || 1e5
-            return {
-                type: 'LineString',
-                coordinates: ApiImpl.decodePath(path.points as string, is3D, multiplier),
-            }
-        } else return path.points as LineString
-    }
-
-    private static decodeWaypoints(path: RawPath, is3D: boolean) {
-        if (path.points_encoded) {
-            const multiplier = path.points_encoded_multiplier || 1e5
-            return {
-                type: 'LineString',
-                coordinates: ApiImpl.decodePath(path.snapped_waypoints as string, is3D, multiplier),
-            }
-        } else return path.snapped_waypoints as LineString
-    }
-
-    private static decodePath(encoded: string, is3D: boolean, multiplier: number): number[][] {
-        const len = encoded.length
-        let index = 0
-        const array: number[][] = []
-        let lat = 0
-        let lng = 0
-        let ele = 0
-
-        while (index < len) {
-            let b
-            let shift = 0
-            let result = 0
-            do {
-                b = encoded.charCodeAt(index++) - 63
-                result |= (b & 0x1f) << shift
-                shift += 5
-            } while (b >= 0x20)
-            const deltaLat = result & 1 ? ~(result >> 1) : result >> 1
-            lat += deltaLat
-
-            shift = 0
-            result = 0
-            do {
-                b = encoded.charCodeAt(index++) - 63
-                result |= (b & 0x1f) << shift
-                shift += 5
-            } while (b >= 0x20)
-            const deltaLon = result & 1 ? ~(result >> 1) : result >> 1
-            lng += deltaLon
-
-            if (is3D) {
-                // elevation
-                shift = 0
-                result = 0
-                do {
-                    b = encoded.charCodeAt(index++) - 63
-                    result |= (b & 0x1f) << shift
-                    shift += 5
-                } while (b >= 0x20)
-                const deltaEle = result & 1 ? ~(result >> 1) : result >> 1
-                ele += deltaEle
-                array.push([lng / multiplier, lat / multiplier, ele / 100])
-            } else array.push([lng / multiplier, lat / multiplier])
-        }
-        return array
     }
 
     public static isFootLike(profile: string) {

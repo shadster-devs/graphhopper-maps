@@ -2,13 +2,9 @@
  * Webpack will replace this file with config-local.js if it exists
  */
 const config = {
-    // the url of the GraphHopper routing backend, either use graphhopper.com or point it to your own GH instance
-    //routingApi: 'https://graphhopper.com/api/1/',
-    routingApi: 'http://10.212.32.144:8989/',
-    // routingApi: 'https://www.makemytrip.com/',
-    // the url of the geocoding backend, either use graphhopper.com or point it to another geocoding service. use an empty string to disable the address search
-    geocodingApi: 'https://graphhopper.com/api/1/',
-    //geocodingApi: 'https://nominatim.openstreetmap.org/',
+    // We're using Sarathi APIs directly for routing and search
+    // Only keeping geocodingApi for now in case reverseGeocode still needs it
+    geocodingApi: '', // Disabled since we're using Sarathi API
     // the tile layer used by default, see MapOptionsStore.ts for all options
     defaultTiles: 'OpenStreetMap',
     // various api keys used for the GH backend and the different tile providers
@@ -19,7 +15,7 @@ const config = {
         thunderforest: 'missing_api_key',
         kurviger: 'missing_api_key',
     },
-    // if true there will be an option to enable the GraphHopper routing graph and the urban density visualization in the layers menu
+    // disable routing graph layer since we're using Sarathi routing
     routingGraphLayerAllowed: false,
     // parameters used for the routing request generation
     request: {
